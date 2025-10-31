@@ -9,7 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.6.1/firebase-database-compat.js"></script>
 
   <style>
-    /* Stili Generali e Reset */
+    /* Stili Generali e Reset (Layout e Colori MANTENUTI) */
     body {
       font-family: sans-serif;
       margin: 0;
@@ -28,11 +28,11 @@
 
     /* Navbar ottimizzata per Mobile con Flexbox */
     .navbar {
-      display: flex; /* Usa flexbox per una migliore gestione dello spazio */
-      overflow-x: auto; /* Permette lo scroll orizzontale su schermi molto stretti */
-      background-color: #333;
-      border-bottom: 2px solid #007bff;
-      white-space: nowrap; /* Impedisce che i link vadano a capo */
+      display: flex;
+      overflow-x: auto;
+      background-color: #333; /* Colore Mantenuto */
+      border-bottom: 2px solid #007bff; /* Colore Mantenuto */
+      white-space: nowrap;
     }
 
     .tab {
@@ -41,7 +41,7 @@
       color: #f4f4f4;
       text-align: center;
       cursor: pointer;
-      flex-grow: 1; /* Distribuisce lo spazio equamente */
+      flex-grow: 1;
       transition: background-color 0.3s;
       border-right: 1px solid #444;
     }
@@ -55,7 +55,7 @@
 
     /* Stato ATTIVO della Tab */
     .tab.active {
-      background-color: #007bff;
+      background-color: #007bff; /* Colore Mantenuto */
       color: white;
     }
 
@@ -65,19 +65,19 @@
       padding-top: 5px;
       opacity: 0;
       visibility: hidden;
-      display: none; /* Nasconde correttamente le sezioni inattive */
+      display: none;
       transition: opacity 0.3s, visibility 0s 0.3s;
     }
 
-    /* Stato ATTIVO della Sezione (FIX: attiva la visibilità) */
+    /* Stato ATTIVO della Sezione (FIX per la navigazione) */
     .content-section.active {
       opacity: 1;
       visibility: visible;
       transition: opacity 0.3s, visibility 0s;
-      display: block; /* Mostra la sezione attiva */
+      display: block;
     }
 
-    /* Stili Tabella */
+    /* Stili Tabella Generale */
     .table {
       width: 100%;
       border-collapse: collapse;
@@ -95,7 +95,7 @@
     }
 
     .table th {
-      background-color: #007bff;
+      background-color: #007bff; /* Colore Mantenuto */
       color: white;
       font-weight: bold;
       position: sticky;
@@ -106,7 +106,63 @@
       background-color: #f8f8f8;
     }
 
-    /* Altri Stili */
+    /* Stili Admin e Form */
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+    }
+    .btn-danger:hover {
+      background-color: #c82333;
+    }
+    .btn-small {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    .player-stats-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        padding: 5px;
+        border: 1px dashed #ddd;
+        border-radius: 4px;
+        align-items: center;
+    }
+    .player-stats-row input {
+        width: 60px;
+        text-align: center;
+    }
+
+    /* Altri Stili Mantenuti */
     .title {
       font-size: 24px;
       text-align: center;
@@ -144,9 +200,29 @@
       window.firebaseApp = firebase.initializeApp(firebaseConfig);
     }
     const db = firebaseApp.database();
-    const { ref, get, set } = firebase.database;
+    const { ref, get, set, push, remove } = firebase.database;
 
-    /* ===== SCHEDULAZIONE: refresh giornaliero alle 23:00 ===== */
+    /* ===== DATI SIMULATI (Per dimostrare la funzionalità) ===== */
+    // Questi dati dovrebbero idealmente essere caricati da un database in Firebase:
+    // /players
+    const allPlayers = ['Alice Rossi', 'Bob Verdi', 'Charlie Bianchi', 'David Neri', 'Eva Gialli', 'Franco Blu'];
+
+    // /matches (struttura semplificata)
+    const dummyMatches = {
+        'm1': { date: '2025-10-15', opponent: 'Squadra A', result: '3-1', status: 'finished', presentPlayers: ['Alice Rossi', 'Bob Verdi', 'Charlie Bianchi'] },
+        'm2': { date: '2025-10-22', opponent: 'Squadra B', result: '1-1', status: 'finished', presentPlayers: ['Alice Rossi', 'Bob Verdi', 'David Neri'] },
+        'm3': { date: '2025-10-29', opponent: 'Squadra C', result: null, status: 'pending', presentPlayers: ['Alice Rossi', 'Bob Verdi', 'Charlie Bianchi', 'David Neri'] },
+    };
+    
+    // Funzione per caricare i dati delle partite da Firebase (o simulati)
+    async function loadMatchesData() {
+        // In una vera applicazione, si farebbe:
+        // const snapshot = await get(ref(db, 'matches'));
+        // return snapshot.val() || dummyMatches;
+        return dummyMatches; // Simulazione
+    }
+
+    /* ===== SCHEDULAZIONE: refresh giornaliero alle 23:00 (MANTENUTO) ===== */
     function msUntilNext(hour, minute = 0, second = 0) {
       const now = new Date();
       const next = new Date(now);
@@ -168,48 +244,281 @@
       }, ms);
     };
 
-    /* ===== FIX NAVIGAZIONE (CORREZIONE ERRORE) ===== */
+    /* ===== LOGICA NAVIGAZIONE (FIX) ===== */
     function switchSection(targetId) {
-        // Rimuovi la classe 'active' da tutte le tab e sezioni
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
 
-        // Aggiungi la classe 'active' alla tab e alla sezione target
         const targetTab = document.querySelector(`.tab[data-target="${targetId}"]`);
         const targetSection = document.querySelector(targetId);
 
         if (targetTab) targetTab.classList.add('active');
         if (targetSection) targetSection.classList.add('active');
+
+        // Aggiorna i dati quando si entra nelle sezioni rilevanti
+        if (targetId === '#sez-stats') {
+            renderPlayerSummary();
+            renderMatchList();
+        }
+        if (targetId === '#sez-admin') {
+            renderAdminMatchSelection();
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Applica i listener di click alle tab
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 const target = tab.getAttribute('data-target');
                 switchSection(target);
-                // Aggiorna l'URL senza ricaricare la pagina (opzionale)
                 history.pushState(null, '', `#${target.substring(1)}`);
             });
         });
 
-        // Gestisce la navigazione iniziale o tramite URL hash
         const initialHash = window.location.hash || '#sez-home';
-        const targetSection = document.querySelector(initialHash);
-        
-        if (targetSection) {
-            switchSection(initialHash);
-        } else {
-            // Se l'hash non è valido, mostra la sezione predefinita
-            switchSection('#sez-home');
-        }
+        switchSection(initialHash);
 
-        // Avvia il caricamento della classifica e la schedulazione
         loadClassifica();
         window.scheduleDailyClassificaRefresh();
     });
 
-    /* ===== LOGICA CLASSIFICA: Recupero dati da romatornei.it e caching su Firebase ===== */
+    /* ===== FUNZIONI CRUD PRESTAZIONI (Admin) ===== */
+
+    // 1. Renderizza la selezione della partita nell'Admin
+    async function renderAdminMatchSelection() {
+        const matches = await loadMatchesData();
+        const container = document.getElementById('admin-match-selection');
+        const listHTML = Object.entries(matches)
+            .filter(([, match]) => match.status === 'finished') // Solo partite concluse
+            .map(([id, match]) => `
+                <div class="info-card" style="display:flex; justify-content: space-between; align-items: center;">
+                    <span>${match.date} vs ${match.opponent} (${match.result})</span>
+                    <button class="btn btn-primary btn-small" onclick="renderPerformanceForm('${id}')">Gestisci Prestazioni</button>
+                </div>
+            `).join('');
+
+        container.innerHTML = `<h3 class="title">Seleziona Partita Conclusa</h3>${listHTML}`;
+        document.getElementById('admin-form-container').innerHTML = ''; // Nasconde il form
+    }
+
+    // 2. Renderizza il form di inserimento/modifica
+    async function renderPerformanceForm(matchId) {
+        const match = dummyMatches[matchId];
+        const container = document.getElementById('admin-form-container');
+        
+        // Carica le prestazioni esistenti
+        const performanceSnap = await get(ref(db, `performances/${matchId}`));
+        const existingPerformances = performanceSnap.val() || {};
+
+        let formHTML = `
+            <h3 class="title">Prestazioni: ${match.opponent} (${match.result})</h3>
+            <p class="help">Inserisci o modifica le prestazioni dei giocatori presenti.</p>
+            <form id="performance-form" onsubmit="handlePerformanceSubmit(event, '${matchId}')">
+        `;
+
+        // Crea un campo per ogni giocatore PRESENTE
+        match.presentPlayers.forEach(player => {
+            const playerKey = player.replace(/\s/g, '_'); // Chiave per Firebase senza spazi
+            const existing = existingPerformances[playerKey] || {};
+            
+            formHTML += `
+                <div class="player-stats-row">
+                    <label style="width: 150px; font-weight: normal;">${player}</label>
+                    <label>Voto:</label>
+                    <input type="number" step="0.5" min="4" max="10" name="${playerKey}_rating" value="${existing.rating || ''}" placeholder="Voto" required>
+                    <label>Goal:</label>
+                    <input type="number" min="0" name="${playerKey}_goal" value="${existing.goal || 0}" required>
+                    <label>Assist:</label>
+                    <input type="number" min="0" name="${playerKey}_assist" value="${existing.assist || 0}" required>
+                </div>
+            `;
+        });
+
+        formHTML += `
+                <button type="submit" class="btn btn-primary" style="margin-top: 15px;">Salva Prestazioni</button>
+            </form>
+            <button class="btn btn-danger" onclick="deletePerformances('${matchId}')" style="margin-top: 10px;">Elimina TUTTE le Prestazioni di questa partita</button>
+        `;
+
+        container.innerHTML = formHTML;
+    }
+
+    // 3. Gestisce l'invio del form e il salvataggio
+    async function handlePerformanceSubmit(event, matchId) {
+        event.preventDefault();
+        const form = event.target;
+        const dataToSave = {};
+
+        // Raccogli i dati dal form
+        dummyMatches[matchId].presentPlayers.forEach(player => {
+            const playerKey = player.replace(/\s/g, '_');
+            const rating = parseFloat(form.elements[`${playerKey}_rating`].value);
+            const goal = parseInt(form.elements[`${playerKey}_goal`].value);
+            const assist = parseInt(form.elements[`${playerKey}_assist`].value);
+
+            if (!isNaN(rating)) {
+                dataToSave[playerKey] = {
+                    rating: rating,
+                    goal: goal,
+                    assist: assist
+                };
+            }
+        });
+
+        try {
+            // Salva i dati su Firebase
+            await set(ref(db, `performances/${matchId}`), dataToSave);
+            alert('Prestazioni salvate con successo!');
+            renderAdminMatchSelection(); // Torna alla selezione partita
+        } catch (error) {
+            console.error("Errore nel salvataggio:", error);
+            alert('Errore nel salvataggio delle prestazioni.');
+        }
+    }
+
+    // 4. Gestisce l'eliminazione dei dati
+    async function deletePerformances(matchId) {
+        if (!confirm("Sei sicuro di voler eliminare tutte le prestazioni per questa partita?")) return;
+
+        try {
+            await remove(ref(db, `performances/${matchId}`));
+            alert('Prestazioni eliminate con successo!');
+            renderAdminMatchSelection();
+        } catch (error) {
+            console.error("Errore nell'eliminazione:", error);
+            alert("Errore nell'eliminazione.");
+        }
+    }
+
+    /* ===== FUNZIONI PUBBLICHE (Statistiche e Dettagli Partita) ===== */
+
+    // Visualizza il dettaglio delle prestazioni di una partita (Pulsante "Prestazioni")
+    async function showMatchPerformanceDetails(matchId) {
+        const match = dummyMatches[matchId];
+        const performanceSnap = await get(ref(db, `performances/${matchId}`));
+        const performances = performanceSnap.val() || {};
+        
+        let detailHTML = `<h3 class="title">Prestazioni Dettagliate: ${match.opponent} (${match.result})</h3>`;
+
+        if (Object.keys(performances).length === 0) {
+            detailHTML += `<p class="help" style="color:red;">Nessuna prestazione ancora inserita per questa partita.</p>`;
+        } else {
+             detailHTML += `
+                <table class="table" style="table-layout: auto;">
+                    <thead>
+                        <tr><th>Giocatore</th><th>Voto</th><th>Goal</th><th>Assist</th></tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            Object.entries(performances).forEach(([playerKey, data]) => {
+                const playerName = playerKey.replace(/_/g, ' ');
+                detailHTML += `
+                    <tr>
+                        <td>${playerName}</td>
+                        <td>${data.rating.toFixed(1)}</td>
+                        <td>${data.goal}</td>
+                        <td>${data.assist}</td>
+                    </tr>
+                `;
+            });
+            detailHTML += `</tbody></table>`;
+        }
+
+        document.getElementById('stats-summary-container').innerHTML = detailHTML;
+    }
+
+    // 1. Renderizza la lista delle partite (inclusi i nuovi pulsanti "Prestazioni")
+    async function renderMatchList() {
+        const matches = await loadMatchesData();
+        const container = document.getElementById('stats-match-list');
+        const listHTML = Object.entries(matches).map(([id, match]) => {
+            let actionButton = '';
+            let statusText = '';
+            
+            if (match.status === 'finished' && match.result) {
+                actionButton = `<button class="btn btn-primary btn-small" onclick="showMatchPerformanceDetails('${id}')">Prestazioni</button>`;
+                statusText = `<span style="color: green; font-weight: bold;">${match.result}</span>`;
+            } else {
+                statusText = `<span style="color: orange;">Da giocare</span>`;
+            }
+
+            return `
+                <div class="info-card" style="display:flex; justify-content: space-between; align-items: center;">
+                    <span>${match.date} vs ${match.opponent} ${statusText}</span>
+                    ${actionButton}
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = `<h3 class="title" style="margin-top: 0;">Partite Giocate</h3>${listHTML}`;
+        document.getElementById('stats-summary-container').innerHTML = ''; // Pulisce il dettaglio partita
+    }
+
+    // 2. Calcola e Renderizza il riepilogo delle prestazioni totali
+    async function renderPlayerSummary() {
+        const performanceSnap = await get(ref(db, `performances`));
+        const allPerformances = performanceSnap.val() || {};
+        const totalStats = {};
+
+        // Inizializza le statistiche per tutti i giocatori
+        allPlayers.forEach(player => {
+            totalStats[player.replace(/\s/g, '_')] = {
+                goal: 0,
+                assist: 0,
+                ratingSum: 0,
+                matchesCount: 0
+            };
+        });
+
+        // Aggrega i dati
+        Object.values(allPerformances).forEach(matchPerformances => {
+            Object.entries(matchPerformances).forEach(([playerKey, data]) => {
+                if (totalStats[playerKey]) {
+                    totalStats[playerKey].goal += data.goal || 0;
+                    totalStats[playerKey].assist += data.assist || 0;
+                    totalStats[playerKey].ratingSum += data.rating || 0;
+                    totalStats[playerKey].matchesCount += 1;
+                }
+            });
+        });
+
+        // Renderizza la tabella
+        let tableHTML = `
+            <h2 class="title">Riepilogo Prestazioni Giocatori</h2>
+            <div style="overflow-x:auto;">
+                <table class="table" style="table-layout: auto;">
+                    <thead>
+                        <tr>
+                            <th>Giocatore</th>
+                            <th>Partite Giocate</th>
+                            <th>Goal Totali</th>
+                            <th>Assist Totali</th>
+                            <th>Media Voto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        Object.entries(totalStats).forEach(([playerKey, stats]) => {
+            const playerName = playerKey.replace(/_/g, ' ');
+            const avgRating = stats.matchesCount > 0 ? (stats.ratingSum / stats.matchesCount).toFixed(2) : '-';
+
+            tableHTML += `
+                <tr>
+                    <td>${playerName}</td>
+                    <td>${stats.matchesCount}</td>
+                    <td>${stats.goal}</td>
+                    <td>${stats.assist}</td>
+                    <td>${avgRating}</td>
+                </tr>
+            `;
+        });
+
+        tableHTML += `</tbody></table></div>`;
+        document.getElementById('stats-player-summary').innerHTML = tableHTML;
+    }
+
+    /* ===== LOGICA CLASSIFICA (MANTENUTA) ===== */
     async function loadClassifica() {
       const classificaContent = document.getElementById('classifica-content');
       const todayKey = new Date().toISOString().slice(0, 10);
@@ -219,14 +528,11 @@
         const snap = await get(ref(db, 'classifica_cache'));
         const cache = snap.val() || {};
 
-        // 1. Controlla la Cache
         if (cache.date === todayKey) {
           classificaContent.innerHTML = cache.html;
-          console.log("Classifica caricata dalla cache.");
           return;
         }
 
-        // 2. Recupera la Nuova Classifica (Fetch)
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const htmlText = await response.text();
@@ -236,7 +542,7 @@
         const table = doc.querySelector('table');
         if (!table) throw new Error('Tabella non trovata nella pagina esterna.');
 
-        // 3. Normalizzazione TH (Intestazioni) per layout mobile
+        // Normalizzazione TH
         const thead = table.querySelector('thead');
         const headers = Array.from(thead.querySelectorAll('th'));
         const totalWidth = headers.reduce((sum, th) => sum + parseInt(th.style.width || 0), 0);
@@ -246,18 +552,16 @@
           return `<th style="width:${widthPercent}">${th.innerHTML}</th>`;
         }).join('')}</tr></thead>`;
 
-        // 4. Normalizzazione TBODY (Corpo della Tabella) per layout mobile
+        // Normalizzazione TBODY
         const tbody = table.querySelector('tbody');
         const tbodyHTML = Array.from(tbody.querySelectorAll('tr')).map((tr, idx) => {
           const rowHTML = Array.from(tr.querySelectorAll('td')).map((td, tdIdx) =>
-            // Applica la larghezza calcolata e l'ottimizzazione word-wrap
             `<td style="width:${(parseInt(headers[tdIdx].style.width || 0) / totalWidth) * 100}%;padding:8px;text-align:center;border-bottom:1px solid #ddd;font-size:13px;word-wrap:break-word">${td.innerHTML}</td>`
           ).join('');
           const bg = idx % 2 === 1 ? ' style="background:#f8f8f8"' : '';
           return `<tr${bg}>${rowHTML}</tr>`;
         }).join('');
 
-        // 5. Costruzione HTML Finale
         const normalizedHTML = `
           <div class="help">Classifica aggiornata automaticamente da <a href="${url}" target="_blank" rel="noopener">romatornei.it</a></div>
           <div style="overflow-x:auto">
@@ -272,7 +576,7 @@
 
         classificaContent.innerHTML = normalizedHTML;
 
-        // 6. Salva in Cache
+        // Salva cache
         await set(ref(db, 'classifica_cache'), {
           html: normalizedHTML,
           date: todayKey,
@@ -280,7 +584,6 @@
         });
       } catch (e) {
         console.error("Errore nel recupero della classifica:", e);
-        // Tenta di caricare dalla cache in caso di errore
         try {
           const snap2 = await get(ref(db, 'classifica_cache'));
           const cache2 = snap2.val() || {};
@@ -304,7 +607,7 @@
       <div class="tab" data-target="#sez-stats">Statistiche</div>
       <div class="tab" data-target="#sez-classifica">Classifica</div>
       <div class="tab" data-target="#sez-info">Info</div>
-    </div>
+      <div class="tab" data-target="#sez-admin">Admin</div> </div>
 
     <div id="sez-home" class="content-section active">
       <h2 class="title">Benvenuto</h2>
@@ -312,11 +615,18 @@
     </div>
 
     <div id="sez-stats" class="content-section">
-      <h2 class="title">Statistiche Giocatori</h2>
-      <p>Contenuto placeholder per le statistiche dei giocatori.</p>
-      <div class="info-card">
-        Dati sulle presenze, gol e assist della squadra.
+      <div id="stats-player-summary">
+        <h2 class="title">Caricamento Riepilogo Giocatori...</h2>
       </div>
+      
+      <hr style="margin: 30px 0; border-top: 1px solid #eee;">
+
+      <div id="stats-match-list">
+        <h2 class="title">Caricamento Partite...</h2>
+      </div>
+
+      <div id="stats-summary-container">
+        </div>
     </div>
 
     <div id="sez-classifica" class="content-section">
@@ -331,6 +641,21 @@
       <p>Questa sezione contiene informazioni di contatto, calendario e regolamento.</p>
       <div class="info-card">
         Contatta il mister per dettagli sui prossimi allenamenti.
+      </div>
+    </div>
+
+    <div id="sez-admin" class="content-section">
+      <h2 class="title">Pannello Amministrativo Prestazioni</h2>
+      
+      <div id="admin-match-selection">
+        <p>Caricamento partite...</p>
+      </div>
+
+      <div id="admin-form-container" style="margin-top: 20px;">
+        </div>
+
+      <div class="info-card" style="margin-top: 30px; background-color: #ffeaea; border-color: #ff0000;">
+        ATTENZIONE: Questa sezione è solo per l'uso da parte dell'amministratore. Non è protetta da password e non dovrebbe essere esposta al pubblico in un'applicazione reale senza misure di sicurezza.
       </div>
     </div>
   </div>
