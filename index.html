@@ -429,11 +429,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
    /* ===== FUNZIONE: Classifica AC Tuscolano (da file utente) ===== */
-<script>
-window.loadClassifica = async () => {
+const loadClassifica = async () => {
   const classificaContent = document.getElementById('classifica-content');
   if (!classificaContent) return;
+
   classificaContent.innerHTML = `<div class="help">Caricamento classifica in corso...</div>`;
+
   try {
     const now = new Date();
     const todayKey = now.toISOString().split('T')[0];
@@ -442,24 +443,20 @@ window.loadClassifica = async () => {
     const cachedHtml = cache.html;
     const cachedDate = cache.date;
 
-    // Se abbiamo cache odierna: usa e basta
     if (cachedHtml && cachedDate === todayKey) {
       classificaContent.innerHTML = cachedHtml;
       return;
     }
 
-    // Se non admin: mostra cache se esiste
-    if (!window.isAdmin) {
+    if (!isAdmin) {
       if (cachedHtml) {
         classificaContent.innerHTML = cachedHtml;
-        return;
       } else {
         classificaContent.innerHTML = `<div class="help" style="color:red">La classifica non è ancora disponibile. L'amministratore provvederà all'aggiornamento.</div>`;
-        return;
       }
+      return;
     }
 
-    // Admin: fetch da romatornei
     const url = "https://www.romatornei.it/calcio-a-8-over-40-roma-sud/";
     const proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(url) + "&cacheBust=" + Date.now();
     const response = await fetch(proxy);
@@ -467,263 +464,62 @@ window.loadClassifica = async () => {
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(data.contents, "text/html");
+    const table = doc.querySelector(".table-responsive table") || doc.querySelector("table[class*='table']") || doc.querySelector("table");
 
-    const remoteTable = doc.querySelector(".table-responsive table, table.table, table");
-    if (!remoteTable) {
+    if (!table) {
       classificaContent.innerHTML = `<div class="help">Impossibile trovare la classifica sul sito remoto.</div>`;
       return;
     }
 
-    // Riduci loghi
-    remoteTable.querySelectorAll("img").forEach(img => {
+    // Stile AC Tuscolano
+    table.querySelectorAll("img").forEach(img => {
       img.style.maxWidth = "25px";
       img.style.height = "auto";
       img.style.verticalAlign = "middle";
     });
 
-    // Estrai intestazioni e righe
-    const headerNodes = remoteTable.querySelectorAll("thead th");
-    const headers = headerNodes.length ? Array.from(headerNodes).map(th => th.textContent.trim())
-      : Array.from(remoteTable.querySelectorAll("tr:first-child th, tr:first-child td")).map(el => el.textContent.trim());
+    table.style.width = "100%";
+    table.style.borderCollapse = "collapse";
+    table.querySelectorAll("th").forEach(th => {
+      th.style.backgroundColor = "#8B0000";
+      th.style.color = "#fff";
+      th.style.padding = "8px";
+      th.style.textAlign = "center";
+      th.style.borderBottom = "2px solid #ccc";
+    });
+    table.querySelectorAll("td").forEach(td => {
+      td.style.padding = "8px";
+      td.style.textAlign = "center";
+      td.style.borderBottom = "1px solid #ddd";
+    });
+    table.querySelectorAll("tr:nth-child(even)").forEach(tr => {
+      tr.style.backgroundColor = "#f8f8f8";
+    });
 
-    const rows = remoteTable.querySelectorAll("tbody tr");
-    const bodyRows = rows.length ? Array.from(rows) : Array.from(remoteTable.querySelectorAll("tr")).slice(1);
-
-    // Calcola numero colonne e larghezze uniformi
-    const colCount = headers.length || (bodyRows[0]?.children.length || 8);
-    const widthPercent = (100 / colCount).toFixed(4) + '%';
-
-    // Costruisci thead
-    let theadHTML = '';
-    if (headers.length) {
-      theadHTML = '<thead><tr>' + headers.map(h => 
-        `<th style="width:${widthPercent};padding:8px;text-align:center;border-bottom:2px solid #ccc;background:#8B0000;color:#fff;font-weight:600;font-size:14px;word-wrap:break-word">${h}</th>`
-      ).join('') + '</tr></thead>';
-    }
-
-    // Costruisci tbody con celle uniformi
-    const tbodyHTML = bodyRows.map((tr, idx) => {
-      const cells = Array.from(tr.children);
-      const rowHTML = cells.map(td => 
-        `<td style="width:${widthPercent};padding:8px;text-align:center;border-bottom:1px solid #ddd;font-size:13px;word-wrap:break-word">${td.innerHTML}</td>`
-      ).join('');
-      const bg = idx % 2 === 1 ? ' style="background:#f8f8f8"' : '';
-      return `<tr${bg}>${rowHTML}</tr>`;
-    }).join('');
-
-    const normalizedHTML = `
+    const htmlContent = `
       <div class="help">Classifica aggiornata automaticamente da <a href="${url}" target="_blank" rel="noopener">romatornei.it</a></div>
-      <div style="overflow-x:auto">
-        <table class="table" style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px">
-          ${theadHTML}
-          <tbody>${tbodyHTML}</tbody>
-        </table>
-      </div>
+      <div style="overflow-x:auto;">${table.outerHTML}</div>
       <div class="help" style="margin-top:8px;">Ultimo aggiornamento: ${new Date().toLocaleString("it-IT")}</div>
       <div id="classifica-next-run" class="help" style="margin-top:4px;"></div>
     `;
 
-    classificaContent.innerHTML = normalizedHTML;
-
-    // Salva cache
+    classificaContent.innerHTML = htmlContent;
     await set(ref(db, 'classifica_cache'), {
-      html: normalizedHTML,
+      html: htmlContent,
       date: todayKey,
       timestamp: Date.now()
     });
-  } catch (e) {
-    console.error(e);
-    try {
-      const snap2 = await get(ref(db, 'classifica_cache'));
-      const cache2 = snap2.val() || {};
-      if (cache2.html) {
-        classificaContent.innerHTML = cache2.html;
-        return;
-      }
-    } catch(_) {}
-    classificaContent.innerHTML = `<div class="help" style="color:red">Errore nel recupero della classifica.</div>`;
+  } catch (error) {
+    console.error("Errore caricamento classifica:", error);
+    const snapFallback = await get(ref(db, 'classifica_cache'));
+    const cache = snapFallback.val();
+    if (cache && cache.html) {
+      classificaContent.innerHTML = cache.html;
+    } else {
+      classificaContent.innerHTML = `<div class="help" style="color:red">Errore nel recupero della classifica.</div>`;
+    }
   }
 };
-
-/**
- * FUNZIONE CORRETTA: Carica e aggrega le prestazioni da /prestazioni
- */
-window.loadPrestazioniAggregato = async () => {
-  // Sezione "Prestazioni" -> div contenitore
-  const wrap = document.getElementById('prestazioni-aggregate-content');
-  if (!wrap) return;
-  
-  wrap.innerHTML = '<h3>Riepilogo Giocatori</h3><div class="help">Calcolo media voti e goal in corso…</div>';
-
-  try {
-    const [snapRosa, snapPrest] = await Promise.all([
-      get(ref(db,'rosa')),
-      get(ref(db,'prestazioni'))
-    ]);
-    const rosa = snapRosa.val()||{};
-    
-    // ===== INIZIO CORREZIONE 1 =====
-    // Logica semplificata e corretta per gestire il snapshot
-    const prestazioni = snapPrest.exists() ? (snapPrest.val() || {}) : {};
-    // ===== FINE CORREZIONE 1 =====
-
-    // 1. Aggrega i dati
-    const agg = {};
-    Object.entries(prestazioni).forEach(([matchId, perMatch]) => {
-      Object.entries(perMatch||{}).forEach(([pid, rec]) => {
-        const voto = Number(rec?.voto);
-        const goal = Number(rec?.goal||0);
-        if (!agg[pid]) agg[pid] = {partite:0, sommaVoti:0, goal:0};
-        
-        // Conta la partita solo se il voto è valido (non null e non NaN)
-        if (!Number.isNaN(voto) && rec.voto !== null) {
-          agg[pid].partite += 1;
-          agg[pid].sommaVoti += voto;
-        }
-        agg[pid].goal += goal;
-      });
-    });
-
-    // 2. Mappa su /rosa e ordina
-    const rows = Object.entries(rosa).map(([pid, g]) => {
-      const a = agg[pid] || {partite:0, sommaVoti:0, goal:0};
-      const media = a.partite > 0 ? (a.sommaVoti / a.partite) : null;
-      return {
-        pid,
-        nome: `${g.nome||''} ${g.cognome||''}`.trim(),
-        numero: g.numero||'',
-        partite: a.partite, // Partite con voto
-        mediaVoto: media !== null ? Number(media.toFixed(2)) : null,
-        goal: a.goal
-      };
-    }).sort((a,b)=> {
-      // Ordina per media voto (decrescente), poi goal (decrescente)
-      const am = a.mediaVoto===null ? -1 : a.mediaVoto;
-      const bm = b.mediaVoto===null ? -1 : b.mediaVoto;
-      if (bm !== am) return bm - am;
-      if (b.goal !== a.goal) return b.goal - a.goal;
-      return a.nome.localeCompare(b.nome);
-    });
-
-    // 3. Genera HTML
-    const rowsHtml = rows.map(r => {
-      let mediaVotoDisplay = '—';
-      let bar = '';
-      
-      if (r.mediaVoto !== null) {
-        const votoNum = r.mediaVoto;
-        mediaVotoDisplay = `<b>${votoNum.toFixed(2)}</b>`;
-        // Calcolo barra
-        const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100)));
-        const color = (votoNum >= 7 ? 'green' : (votoNum >= 6 ? 'yellow' : 'red'));
-        bar = `<div class="voto-bar-container"><div class="voto-bar ${color}" style="width:${perc}%"></div></div>`;
-      } else if (r.partite > 0) {
-          // Caso strano: partite contate ma media è null (es. voto 0)
-          mediaVotoDisplay = '<b>0.00</b>';
-          bar = `<div class="voto-bar-container"><div class="voto-bar red" style="width:1%"></div></div>`;
-      }
-
-      return `<tr>
-                <td>${r.numero}</td>
-                <td>${escapeHtml(r.nome)}</td>
-                <td>${r.partite}</td>
-                <td style="min-width: 80px;">${mediaVotoDisplay}${bar}</td>
-                <td>${r.goal}</td>
-              </tr>`;
-    }).join('');
-
-    wrap.innerHTML = `
-        <h3>Riepilogo Giocatori</h3>
-        <div style="overflow-x:auto">
-            <table class="table">
-                <thead><tr><th>#</th><th>Giocatore</th><th>Partite (con voto)</th><th>Media voto</th><th>Goal Tot.</th></tr></thead>
-                <tbody>${rowsHtml}</tbody>
-            </table>
-        </div>`;
-  } catch (err) {
-    console.error('Errore aggregato prestazioni:', err);
-    const empty = `<h3>Riepilogo Giocatori</h3><div class="help" style="color:red">Errore nel calcolo delle prestazioni aggregate.</div><table class="table"><thead><tr><th>#</th><th>Giocatore</th><th>Partite</th><th>Media voto</th><th>Goal</th></tr></thead><tbody></tbody></table>`;
-    wrap.innerHTML = empty;
-  }
-};
-
-/**
- * FUNZIONE CORRETTA: loadProssimeGiornate
- * Include il pulsante "Prestazioni" (pubblico) e "Valuta" (admin)
- */
-window.loadProssimeGiornate = async function(asAdmin){
-  const listId = asAdmin ? 'admin-calendario-list' : 'calendario-list';
-  const ul = byId(listId); if(!ul) return; ul.innerHTML='';
-  const snap = await get(ref(db,'calendario'));
-  const val = snap.val() || {};
-  let entries = Object.entries(val);
-  const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
-  const today = new Date(); today.setHours(0,0,0,0);
-  entries.sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
-  if(!entries.length){ ul.innerHTML = '<div class="help">Nessuna partita a calendario.</div>'; return; }
-  ul.className='grid cols-3';
-  for(const [matchId,m] of entries){
-    const candSnap = await get(ref(db,`calendario/${matchId}/candidature`));
-    const cand = candSnap.val() || {};
-    const candCount = Object.values(cand).filter(Boolean).length;
-    const isPublished = m.formazionePubblicata === true;
-    const matchDate = toDate(m.data);
-    const isPast = matchDate < today;
-
-    // Candidatura
-    let candButton = '';
-    if (isPast) {
-      candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura scaduta</button>`;
-    } else {
-      candButton = `<button class="btn btn--accent" onclick="candidati('${matchId}')">Candidatura</button>`;
-    }
-
-    // Prestazioni: sempre mostrato. Attivo solo se partita passata con risultato valido.
-    let prestazioniBtn = '';
-    const risultatoValido = (m.risultato && m.risultato !== 'N/D');
-    if (isPast && risultatoValido) {
-      // Passa anche il nome avversaria alla funzione
-      prestazioniBtn = `<button class="btn" onclick="showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
-    } else {
-      prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
-    }
-    
-    // ===== INIZIO CORREZIONE 2 =====
-    // Pulsante Admin Valuta: solo se partita passata con risultato
-    let adminValutaBtn = '';
-    if (isPast && risultatoValido) {
-        adminValutaBtn = `<button class="btn btn--admin" onclick="showValutazionePartitaForm('${matchId}','${escapeHtml(m.avversaria||'')}')">Valuta</button>`;
-    } else {
-        adminValutaBtn = `<button class="btn btn--admin" disabled style="opacity:0.6;cursor:not-allowed">Valuta</button>`;
-    }
-    // ===== FINE CORREZIONE 2 =====
-
-
-    const li = document.createElement('li'); li.className='card';
-    li.innerHTML = `
-      <div class="row" style="justify-content:space-between;align-items:flex-start">
-        <div>
-          <div style="font-weight:800;font-size:1.05rem">vs ${m.avversaria||''}</div>
-          <div class="player-sub">${m.data||''} • ${m.orario||''} • ${m.campo||''} • ${m.casa? 'Casa':'Trasferta'}</div>
-          <div class="player-sub">Candidature: <b>${candCount}</b></div>
-          <div class="player-sub">Risultato: <b>${m.risultato||'N/D'}</b></div>
-        </div>
-        <div class="row" style="flex-direction: column; align-items: stretch; width: 100%; gap: 6px; margin-top: 8px;">
-          ${!asAdmin ? `
-            <div class="row" style="gap:6px">${candButton} ${isPublished ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria||'')}')">Vedi Formazione</button>` : ''}</div>
-            <div class="row" style="gap:6px">${prestazioniBtn}</div>
-          `:''}
-          ${asAdmin ? `
-            <button class="btn btn--admin" onclick="showFormazioneForm('${matchId}','${escapeHtml(m.avversaria||'')}')">Formazione & Sost.</button>
-            <button class="btn btn--admin" onclick="showRisultatoForm('${matchId}','${escapeHtml(m.avversaria||'')}')">Risultato</button>
-            ${adminValutaBtn}
-          `:''}
-        </div>
-      </div>`;
-    ul.appendChild(li);
-  }
-};
-</script>
 
 
 
@@ -2082,7 +1878,6 @@ window.loadProssimeGiornate = async function(asAdmin){
   </footer>
 
 <script>
-// Questa funzione è l'override da file utente
 window.loadClassifica = async () => {
   const classificaContent = document.getElementById('classifica-content');
   if (!classificaContent) return;
@@ -2199,7 +1994,7 @@ window.loadClassifica = async () => {
 };
 
 /**
- * NUOVA FUNZIONE (da file utente): Carica e aggrega le prestazioni da /prestazioni
+ * FUNZIONE CORRETTA: Carica e aggrega le prestazioni da /prestazioni
  */
 window.loadPrestazioniAggregato = async () => {
   // Sezione "Prestazioni" -> div contenitore
@@ -2214,7 +2009,11 @@ window.loadPrestazioniAggregato = async () => {
       get(ref(db,'prestazioni'))
     ]);
     const rosa = snapRosa.val()||{};
-    const prestazioni = snapPrest && snapPrest.exists ? (snapPrest.exists() ? (snapPrest.val()||{}) : {}) : (snapPrest?.val?.() || {});
+    
+    // ===== INIZIO CORREZIONE 1 =====
+    // Logica semplificata e corretta per gestire il snapshot
+    const prestazioni = snapPrest.exists() ? (snapPrest.val() || {}) : {};
+    // ===== FINE CORREZIONE 1 =====
 
     // 1. Aggrega i dati
     const agg = {};
@@ -2297,7 +2096,7 @@ window.loadPrestazioniAggregato = async () => {
 };
 
 /**
- * OVERRIDE (da file utente): loadProssimeGiornate
+ * FUNZIONE CORRETTA: loadProssimeGiornate
  * Include il pulsante "Prestazioni" (pubblico) e "Valuta" (admin)
  */
 window.loadProssimeGiornate = async function(asAdmin){
@@ -2337,6 +2136,7 @@ window.loadProssimeGiornate = async function(asAdmin){
       prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
     }
     
+    // ===== INIZIO CORREZIONE 2 =====
     // Pulsante Admin Valuta: solo se partita passata con risultato
     let adminValutaBtn = '';
     if (isPast && risultatoValido) {
@@ -2344,6 +2144,7 @@ window.loadProssimeGiornate = async function(asAdmin){
     } else {
         adminValutaBtn = `<button class="btn btn--admin" disabled style="opacity:0.6;cursor:not-allowed">Valuta</button>`;
     }
+    // ===== FINE CORREZIONE 2 =====
 
 
     const li = document.createElement('li'); li.className='card';
