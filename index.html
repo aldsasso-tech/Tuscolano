@@ -192,7 +192,7 @@
     .voto-bar.green{ background-color: #0e7a0d; }
 
 
-    /* NUOVI STILI: Esito Partita nella Sezione Statistiche/Risultati */
+    /* NUOVI STILI AGGIUNTI: Esito Partita nella Sezione Statistiche/Risultati */
     .match-result-item {
         padding-left: 10px !important; /* Spazio per l'indicatore laterale */
         position: relative;
@@ -265,7 +265,7 @@
       authDomain: "actuscolano.firebaseapp.com",
       databaseURL: "https://actuscolano-default-rtdb.firebaseio.com",
       projectId: "actuscolano",
-      storageBucket: "actuscolano.firebasestorage.app",
+      storageBucket: "actuscolano.firebaseapp.com",
       messagingSenderId: "62685359731",
       appId: "1:62685359731:web:26819bedd94fcb1ce8c406",
       measurementId: "G-TSVH8PH4RC"
@@ -937,7 +937,7 @@
     }
 
 
-    /* FUNZIONI PRESTAZIONI AGGREGATE E PARTITA RESTANTI (OMESSE PER BREVITÀ MA NON MODIFICATE) */
+    /* FUNZIONI PRESTAZIONI AGGREGATE E PARTITA RESTANTI */
 
     window.loadPrestazioniAggregato = async () => { 
       const content = byId('prestazioni-aggregate-content'); 
@@ -1165,14 +1165,723 @@
     
     window.publishFormazione = async (matchId, publish=true) => { if(!isAdmin) return; await update(ref(db,`calendario/${matchId}`),{formazionePubblicata: publish}); alert(publish?'Formazione pubblicata!':'Formazione nascosta!'); window.loadProssimeGiornate(false); window.loadProssimeGiornate(true); }; 
     
-    // ... FUNZIONI CRUD, FORMAZIONE, CANDIDATURE, ecc. (OMESSE PER BREVITÀ MA NON MODIFICATE)
-    // Le funzioni showFormazioneForm, saveFormation, incrementPresenzeInRosa, visualizeAllFormations, loadCandidature, ecc. sono presenti e non modificate.
+    // Funzione per mostrare il form di Valutazione (usata per il menu)
+    window.loadPartiteForRisultato = async () => {
+      const select = byId('risultato-matchId');
+      if (!select) return;
+      select.innerHTML = '<option value="">Caricamento...</option>';
+      const snap = await get(ref(db, 'calendario'));
+      const val = snap.val() || {};
+      const options = Object.entries(val)
+        .map(([id, m]) => `<option value="${id}">vs ${m.avversaria} (${m.data}) - Risultato: ${m.risultato || 'N/D'}</option>`)
+        .join('');
+      select.innerHTML = '<option value="">Seleziona partita...</option>' + options;
+    };
+    // Esegui il caricamento quando la sezione viene aperta
+    document.addEventListener('DOMContentLoaded', () => {
+      // ... (altri event listener)
+      byId('admin-statistiche-section')?.addEventListener('click', loadPartiteForRisultato);
+    });
 
-    window.showFormazioneForm = async (matchId,avv)=>{ if(!isAdmin) return; window.showAdminSection('admin-formazione-section'); const box = byId('formazione-content'); box.innerHTML='Caricamento...'; const [snapRosa, snapCandidature, snapUtenti, snapMatch] = await Promise.all([ get(ref(db,'rosa')), get(ref(db,`calendario/${matchId}/candidature`)), get(ref(db,'utenti')), get(ref(db,`calendario/${matchId}`)) ]); const val = snapRosa.val()||{}; const candidatureMap = snapCandidature.val()||{}; const utentiMap = snapUtenti.val()||{}; const matchData = snapMatch.val() || {}; const currentTitolari = matchData.formazioni?.['0']?.formazione || {}; const currentPanchina = matchData.panchina || []; const nameToUid = {}; Object.entries(utentiMap).forEach(([uid,u])=>{ if(u.nome&&u.cognome) nameToUid[`${u.nome} ${u.cognome}`]=uid; }); // 1. FILTRARE I GIOCATORI SOLO PER CHI HA DATO DISPONIBILITÀ const availablePlayers = Object.entries(val).map(([id, g]) => { const playerName = `${g.nome} ${g.cognome}`; const uid = nameToUid[playerName]; const isAvailable = uid && candidatureMap[uid] === true; // Recupera 'presenze' da /rosa (come fallback o dato manuale) const presenze = g.presenze || 0; return { id, uid, isAvailable, nome:g.nome, cognome:g.cognome, numero:g.numero, ruolo: g.ruolo, presenze: presenze, label: `${g.nome} ${g.cognome} (#${g.numero}) — ${presenze} pres.` }; }).filter(p => p.isAvailable) .sort((a, b) => (a.presenze - b.presenze) || a.ruolo.localeCompare(b.ruolo)); // Helper per generare le opzioni const opts = (currentId) => { let html = '<option value="">Seleziona</option>'; availablePlayers.forEach(p => { const isSelected = p.id === currentId; html += `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${p.label}</option>`; }); return html; }; // Helper per collezionare i dati attuali del form const collectTitolariMap = () => { const map = {}; document.querySelectorAll('#titolari select[data-role="titolari"]').forEach(sel => { map[sel.id.replace('t-','')] = sel.value; }); return map; }; const collectPanchina = () => { const ids = []; document.querySelectorAll('#panchina select').forEach(sel => { if(sel.value) ids.push(sel.value); }); return ids; }; const collectSostituzioni = () => { const subs = []; document.querySelectorAll('#sostituzioni > div.row').forEach(row => { const minuto = row.querySelector('input[type="number"]').value; const entra = row.querySelector('[id^="entra-"]').value; const esce = row.querySelector('[id^="esce-"]').value; if(minuto&&entra&&esce) subs.push({minuto: parseInt(minuto), entra, esce}); }); return subs; }; // Calcola il numero di sostituzioni consentite (T_Player = tempo totale in campo di tutti i titolari) const calculateSubstitutions = (panchinaIds) => { const T_Partita = matchData.minutiPartita || 50; const T_Slot = T_Partita / N_SLOTS; const N_Player = panchinaIds.length; const N_Subs_Max = Math.min(N_Player, N_SLOTS); const N_Subs_Max_Per_Slot = Math.floor(T_Partita/T_Slot); // Non credo serva T_Slot in questo contesto... la lega ne consente X. Utilizzo il numero di riserve. const T_Player = (N_SLOTS * T_Partita) + (N_Player > 0 ? (N_Player * T_Partita) : 0); // Durata totale partita in minuti return { subs: [], N_Tot: N_Subs_Max }; // Non usiamo N_Tot, usiamo solo N_Player (numero panchina) }; // Renderizza il pannello sostituzioni const renderSubstitutionsUI = () => { const N_Max_Subs = N_SLOTS; // La lega consente X sostituzioni (ipotizziamo N_SLOTS) const panchinaIds = collectPanchina().filter(Boolean); const titolariIds = Object.values(collectTitolariMap()).filter(Boolean); const allSelected = [...titolariIds, ...panchinaIds]; // Filtra i giocatori disponibili per la sostituzione (panchina attuale) const subsOptions = (currentId) => { let html = '<option value="">Seleziona</option>'; panchinaIds.forEach(pid => { const p = availablePlayers.find(x=>x.id===pid); if(!p) return; const isSelected = p.id === currentId; html += `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${p.label}</option>`; }); return html; }; // Filtra i giocatori che POSSONO uscire (titolari attuali) const titolariOptions = (currentId) => { let html = '<option value="">Seleziona</option>'; titolariIds.forEach(pid => { const p = availablePlayers.find(x=>x.id===pid); if(!p) return; const isSelected = p.id === currentId; html += `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${p.label}</option>`; }); return html; }; const substitutionsContainer = byId('sostituzioni'); substitutionsContainer.innerHTML = ''; for(let i=1; i<=N_Max_Subs; i++){ const row = document.createElement('div'); row.className = 'row card'; row.style.alignItems = 'flex-end'; row.style.marginBottom = '10px'; const currentSub = matchData.sostituzioni?.find(s=>s.placeholder===`Sostituzione ${i}`) || {}; const entraSel = currentSub.entra || ''; const esceSel = currentSub.esce || ''; const minutoVal = currentSub.minuto || (i * 10).toString(); row.innerHTML = ` <div style="flex: 0 0 100px;"><label>Minuto</label><input type="number" value="${minutoVal}" min="1" max="${matchData.minutiPartita || 50}" style="width:100px" required /></div> <div style="flex: 1 1 180px"><label>Entra</label><select id="entra-${i}" required>${subsOptions(entraSel)}</select></div> <div style="flex: 1 1 180px"><label>Esce</label><select id="esce-${i}" required>${titolariOptions(esceSel)}</select></div>`; substitutionsContainer.appendChild(row); } }; // ... Resto della funzione showFormazioneForm (updatePreview, Event Listeners) 
+    // Inizio della funzione per la gestione della Formazione/Sostituzioni
+    window.showFormazioneForm = async (matchId,avv)=>{ 
+        if(!isAdmin) return; 
+        window.showAdminSection('admin-formazione-section'); 
+        const box = byId('formazione-content'); 
+        box.innerHTML='Caricamento...'; 
+        
+        const [snapRosa, snapCandidature, snapUtenti, snapMatch] = await Promise.all([ 
+            get(ref(db,'rosa')), 
+            get(ref(db,`calendario/${matchId}/candidature`)), 
+            get(ref(db,'utenti')), 
+            get(ref(db,`calendario/${matchId}`)) 
+        ]); 
+        
+        const val = snapRosa.val()||{}; 
+        const candidatureMap = snapCandidature.val()||{}; 
+        const utentiMap = snapUtenti.val()||{}; 
+        const matchData = snapMatch.val() || {}; 
+        
+        const currentTitolari = matchData.formazioni?.['0']?.formazione || {}; 
+        const currentPanchina = matchData.panchina || []; 
+        
+        const nameToUid = {}; 
+        Object.entries(utentiMap).forEach(([uid,u])=>{ 
+            if(u.nome&&u.cognome) nameToUid[`${u.nome} ${u.cognome}`]=uid; 
+        }); 
+
+        // 1. FILTRARE I GIOCATORI SOLO PER CHI HA DATO DISPONIBILITÀ (o è già in rosa/titolare)
+        const availablePlayers = Object.entries(val).map(([id, g]) => { 
+            const playerName = `${g.nome} ${g.cognome}`; 
+            const uid = nameToUid[playerName]; 
+            const isAvailable = uid && candidatureMap[uid] === true; 
+            
+            // Per includere giocatori non registrati che erano già stati selezionati come titolari o panchina
+            const isSelected = Object.values(currentTitolari).includes(id) || currentPanchina.includes(id);
+
+            // Recupera 'presenze' da /rosa 
+            const presenze = g.presenze || 0; 
+
+            return { 
+                id, 
+                uid, 
+                isAvailable, 
+                isSelected,
+                nome:g.nome, 
+                cognome:g.cognome, 
+                numero:g.numero, 
+                ruolo: g.ruolo, 
+                presenze: presenze, 
+                label: `${g.nome} ${g.cognome} (#${g.numero}) — ${presenze} pres.` 
+            }; 
+        })
+        .filter(p => p.isAvailable || p.isSelected) // Includi chi è disponibile O è già stato selezionato
+        .sort((a, b) => (a.presenze - b.presenze) || a.ruolo.localeCompare(b.ruolo)); 
+        
+        // Helper per generare le opzioni
+        const opts = (currentId) => { 
+            let html = '<option value="">Seleziona</option>'; 
+            availablePlayers.forEach(p => { 
+                const isSelected = p.id === currentId; 
+                html += `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${p.label}</option>`; 
+            }); 
+            return html; 
+        }; 
+        
+        // Helper per collezionare i dati attuali del form (Titolari)
+        const collectTitolariMap = () => { 
+            const map = {}; 
+            document.querySelectorAll('#titolari select[data-role="titolari"]').forEach(sel => { 
+                map[sel.id.replace('t-','')] = sel.value; 
+            }); 
+            return map; 
+        }; 
+        
+        // Helper per collezionare i dati attuali del form (Panchina)
+        const collectPanchina = () => { 
+            const ids = []; 
+            document.querySelectorAll('#panchina select').forEach(sel => { 
+                if(sel.value) ids.push(sel.value); 
+            }); 
+            return ids; 
+        }; 
+        
+        // Helper per collezionare i dati attuali del form (Sostituzioni)
+        const collectSostituzioni = () => { 
+            const subs = []; 
+            document.querySelectorAll('#sostituzioni > div.row').forEach(row => { 
+                const minuto = row.querySelector('input[type="number"]').value; 
+                const entra = row.querySelector('[id^="entra-"]').value; 
+                const esce = row.querySelector('[id^="esce-"]').value; 
+                if(minuto&&entra&&esce) subs.push({minuto: parseInt(minuto), entra, esce, placeholder: row.dataset.placeholder}); 
+            }); 
+            return subs; 
+        }; 
+        
+        // Renderizza il pannello sostituzioni
+        const renderSubstitutionsUI = () => { 
+            const N_Max_Subs = N_SLOTS; // La lega consente X sostituzioni (ipotizziamo N_SLOTS) 
+            
+            // Aggiorna la lista di chi può ENTRARE (Panchina attuale)
+            const panchinaIds = collectPanchina().filter(Boolean);
+            const subsOptions = (currentId) => { 
+                let html = '<option value="">Seleziona</option>'; 
+                panchinaIds.forEach(pid => { 
+                    const p = availablePlayers.find(x=>x.id===pid); 
+                    if(!p) return; 
+                    const isSelected = p.id === currentId; 
+                    html += `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${p.label.split('—')[0].trim()}</option>`; // Mostra solo nome cognome
+                }); 
+                return html; 
+            }; 
+
+            // Aggiorna la lista di chi può USCIRE (Titolari attuali)
+            const titolariIds = Object.values(collectTitolariMap()).filter(Boolean);
+            const titolariOptions = (currentId) => { 
+                let html = '<option value="">Seleziona</option>'; 
+                titolariIds.forEach(pid => { 
+                    const p = availablePlayers.find(x=>x.id===pid); 
+                    if(!p) return; 
+                    const isSelected = p.id === currentId; 
+                    html += `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${p.label.split('—')[0].trim()}</option>`; 
+                }); 
+                return html; 
+            }; 
+            
+            const substitutionsContainer = byId('sostituzioni'); 
+            substitutionsContainer.innerHTML = ''; 
+            
+            for(let i=1; i<=N_Max_Subs; i++){ 
+                const row = document.createElement('div'); 
+                row.className = 'row card'; 
+                row.style.alignItems = 'flex-end'; 
+                row.style.marginBottom = '10px'; 
+                row.dataset.placeholder = `Sostituzione ${i}`;
+                
+                const currentSub = matchData.sostituzioni?.find(s=>s.placeholder===`Sostituzione ${i}`) || {}; 
+                const entraSel = currentSub.entra || ''; 
+                const esceSel = currentSub.esce || ''; 
+                const minutoVal = currentSub.minuto || (i * 5).toString(); // Valore predefinito minuto ogni 5 min
+                
+                row.innerHTML = ` 
+                    <div style="flex: 0 0 100px;"><label>Minuto</label><input type="number" value="${minutoVal}" min="1" max="${matchData.minutiPartita || 50}" style="width:100px" required /></div> 
+                    <div style="flex: 1 1 180px"><label>Entra</label><select id="entra-${i}" required>${subsOptions(entraSel)}</select></div> 
+                    <div style="flex: 1 1 180px"><label>Esce</label><select id="esce-${i}" required>${titolariOptions(esceSel)}</select></div>`; 
+                substitutionsContainer.appendChild(row); 
+            } 
+        }; 
+
+        // Renderizza il form iniziale
+        let formHTML = `<form id="formazione-match-form" onsubmit="saveFormation(event,'${matchId}','${escapeHtml(avv)}')"> 
+            <h3>Formazione Titolare (Modulo 3-3-1) vs ${escapeHtml(avv)}</h3> 
+            <div id="titolari" class="grid cols-2">`;
+        
+        // I ruoli devono essere fissi
+        const fixedRoles = Object.keys(POS_331); 
+        fixedRoles.forEach(ruolo => {
+            const currentId = currentTitolari[ruolo] || '';
+            formHTML += `<div><label>${ruolo}</label><select id="t-${ruolo.replace(/\s/g,'-')}" data-role="titolari" required>${opts(currentId)}</select></div>`;
+        });
+        
+        formHTML += `</div><hr style="margin: 20px 0;"><h4>Panchina (Riserve)</h4><div id="panchina" class="grid cols-2">`;
+        
+        // Genera i 7 slot della panchina
+        for(let i=0; i<7; i++){
+            const currentId = currentPanchina[i] || '';
+            formHTML += `<div><label>Riserva ${i+1}</label><select id="p-${i}">${opts(currentId)}</select></div>`;
+        }
+        
+        formHTML += `</div><hr style="margin: 20px 0;">`;
+        formHTML += `<div id="sostituzioni-area"><h4>Sostituzioni (Max 8)</h4><div id="sostituzioni"></div></div>`;
+        
+        formHTML += `<div class="actions" style="margin-top:20px"><button class="btn btn--admin" type="submit">Salva Formazione & Sostituzioni</button></div></form>`;
+
+        box.innerHTML = formHTML;
+
+        // Visualizza la formazione iniziale nel campo di preview
+        const updatePreview = () => {
+            const preview = byId('preview-field');
+            const titolariMap = collectTitolariMap();
+            preview.innerHTML = '';
+            
+            Object.entries(titolariMap).forEach(([ruolo, pid]) => {
+                const pl = availablePlayers.find(p => p.id === pid);
+                const pos = POS_331[ruolo];
+                if (!pl || !pos) return;
+
+                const mk = document.createElement('div');
+                mk.className='marker';
+                mk.style.top=pos.top;
+                mk.style.left=pos.left;
+                mk.innerHTML = `<b>${escapeHtml(pl.cognome)}</b><br>${ruolo}`;
+                preview.appendChild(mk);
+            });
+            
+            // Ricarica la UI Sostituzioni ad ogni cambio di Titolari/Panchina
+            renderSubstitutionsUI();
+        };
+
+        // Aggiungi event listeners per aggiornare preview e sostituzioni
+        document.querySelectorAll('#titolari select[data-role="titolari"]').forEach(sel => {
+            sel.addEventListener('change', updatePreview);
+        });
+        document.querySelectorAll('#panchina select').forEach(sel => {
+            sel.addEventListener('change', renderSubstitutionsUI);
+        });
+
+        // Esegui il setup iniziale
+        updatePreview(); 
+        renderSubstitutionsUI();
+    };
+
+    // Funzione di salvataggio (AGGIORNATA per usare la struttura estesa e i nuovi helper)
+    window.saveFormation = async (e,matchId,avv)=>{ 
+        e.preventDefault(); 
+        if(!isAdmin) return; 
+
+        const form = byId('formazione-match-form');
+        const tit = collectTitolariMap(); 
+        const panchina = collectPanchina(); 
+        const sost = collectSostituzioni(); 
+        const matchData = (await get(ref(db, `calendario/${matchId}`))).val() || {}; // Ricarica dati partita
+
+        // Validazione Titolari 
+        for(const val of Object.values(tit)){ 
+            if(!val) return alert('Completa tutti gli 8 titolari.'); 
+        } 
+        
+        // Verifica duplicati tra titolari e panchina 
+        const titolariIds = Object.values(tit).filter(Boolean); 
+        const panchinaIds = panchina.filter(Boolean); 
+        const allSelected = [...titolariIds, ...panchinaIds]; 
+        const uniqueSet = new Set(allSelected); 
+        if (allSelected.length !== uniqueSet.size) { 
+            return alert("Attenzione: uno o più giocatori sono stati selezionati più volte (titolare e/o riserva). Correggi la selezione prima di procedere."); 
+        } 
+
+        // Costruisci formazioni: la prima (minuto 0) è solo titolari 
+        const formazioni = {}; 
+        formazioni['0'] = {formazione: tit, sost: null}; 
+        
+        // Applica le sostituzioni per creare gli snapshot successivi 
+        let currentFormazione = {...tit}; 
+        sost.forEach(s=>{ 
+            const { minuto, entra, esce } = s; 
+            if(!entra||!esce) return; // Se la sostituzione non è completa, salta 
+            
+            // Trova il ruolo del giocatore uscente per il re-inserimento (la chiave è il Ruolo) 
+            const ruoloUscente = Object.entries(currentFormazione).find(([ruolo,pid])=>pid===esce)?.[0]; 
+            
+            if(ruoloUscente){ 
+                currentFormazione[ruoloUscente] = entra; // Scambio 
+                formazioni[minuto.toString()] = {formazione: {...currentFormazione}, sost: s}; 
+            } 
+        }); 
+        
+        // Aggiorna il nodo del calendario con la nuova struttura 
+        const updates = {}; 
+        updates[`/calendario/${matchId}/formazioni`] = formazioni; 
+        updates[`/calendario/${matchId}/sostituzioni`] = sost; 
+        updates[`/calendario/${matchId}/panchina`] = panchinaIds; 
+        updates[`/calendario/${matchId}/minutiPartita`] = matchData.minutiPartita || 50; 
+        
+        // Salva la formazione e le sostituzioni 
+        await update(ref(db), updates); 
+        
+        // AGGIORNATO: Incrementa le presenze manuali in /rosa 
+        await incrementPresenzeInRosa(allSelected); 
+        alert('Formazione salvata e presenze aggiornate!'); 
+        window.loadProssimeGiornate(false); 
+        visualizeAllFormations(avv,formazioni); 
+    }; 
     
-    window.saveFormation = async (e,matchId,avv)=>{ e.preventDefault(); const tit = collectTitolariMap(); const panchina = collectPanchina(); const sost = collectSostituzioni(); // Validazione Titolari for(const val of Object.values(tit)){ if(!val) return alert('Completa tutti gli 8 titolari.'); } // Verifica duplicati tra titolari e panchina const titolariIds = Object.values(tit).filter(Boolean); const panchinaIds = panchina.filter(Boolean); const allSelected = [...titolariIds, ...panchinaIds]; const uniqueSet = new Set(allSelected); if (allSelected.length !== uniqueSet.size) { return alert("Attenzione: uno o più giocatori sono stati selezionati più volte (titolare e/o riserva). Correggi la selezione prima di procedere."); } // Costruisci formazioni: la prima (minuto 0) è solo titolari const formazioni = {}; formazioni['0'] = {formazione: tit, sost: null}; // Applica le sostituzioni per creare gli snapshot successivi let currentFormazione = {...tit}; sost.forEach(s=>{ const { minuto, entra, esce } = s; if(!entra||!esce) return; // Se la sostituzione non è completa, salta // Trova il ruolo del giocatore uscente per il re-inserimento (la chiave è l'ID) const ruoloUscente = Object.entries(currentFormazione).find(([ruolo,pid])=>pid===esce)?.[0]; if(ruoloUscente){ currentFormazione[ruoloUscente] = entra; // Scambio formazioni[minuto.toString()] = {formazione: {...currentFormazione}, sost: s}; } }); // Aggiorna il nodo del calendario con la nuova struttura const updates = {}; updates[`/calendario/${matchId}/formazioni`] = formazioni; updates[`/calendario/${matchId}/sostituzioni`] = sost; updates[`/calendario/${matchId}/panchina`] = panchinaIds; updates[`/calendario/${matchId}/minutiPartita`] = matchData.minutiPartita || 50; // Salva la formazione e le sostituzioni await update(ref(db), updates); // AGGIORNATO: Incrementa le presenze manuali in /rosa await incrementPresenzeInRosa(allSelected); alert('Formazione salvata e presenze aggiornate!'); window.loadProssimeGiornate(false); visualizeAllFormations(avv,formazioni); }; // Funzione per visualizzare tutte le formazioni (pre-esistente) function visualizeAllFormations(avv,formazioni){ const out = document.createElement('div'); out.innerHTML = `<h3>${Object.keys(formazioni).length} formazioni vs ${avv}</h3><div class="help">Titolare (0’) + mappe dopo ogni sostituzione.</div>`; const wrap = document.createElement('div'); wrap.className='grid cols-3'; out.appendChild(wrap); get(ref(db,'rosa')).then(s=>{ const allPlayers = s.val()||{}; Object.keys(formazioni).forEach(min=>{ const pane = document.createElement('div'); pane.className='card'; pane.innerHTML = `<div style="font-weight:800;margin-bottom:6px">Minuto ${min}${min==='0'?' (Titolare)':''}</div><div class="field"></div>`; wrap.appendChild(pane); const field = pane.querySelector('.field'); const f = formazioni[min].formazione; Object.entries(f).forEach(([ruolo,pid])=>{ const pl = allPlayers[pid]; const pos = POS_331[ruolo]; if(!pl||!pos) return; const mk = document.createElement('div'); mk.className='marker'; mk.style.top=pos.top; mk.style.left=pos.left; mk.innerHTML = `<b>${escapeHtml(pl.cognome)}</b><br>${ruolo}`; field.appendChild(mk); }); }); }); const box = byId('formazione-content'); box.innerHTML=''; box.appendChild(out); } }; // Helper: incremento presenze multiplo (in /rosa) async function incrementPresenzeInRosa(playerIdsSet){ const presenti = new Set(playerIdsSet); // Assicura unicità if(presenti.size === 0) return; const snap = await get(ref(db,'rosa')); const rosa = snap.val() || {}; const updates = {}; presenti.forEach(pid => { const g = rosa[pid]; if(g){ updates[`/rosa/${pid}/presenze`] = (g.presenze || 0) + 1; } }); if(Object.keys(updates).length){ await update(ref(db), updates); } } // Admin: visualizzazione candidature compatta async function loadCandidature(){ if(!isAdmin) return; const ul = byId('candidature-list'); if(!ul) return; ul.innerHTML = '<li>Caricamento...</li>'; const [snapCal, snapRosa, snapUtenti] = await Promise.all([ get(ref(db,'calendario')), get(ref(db,'rosa')), get(ref(db,'utenti')) ]); const cal = snapCal.val() || {}; const rosa = snapRosa.val() || {}; const utenti = snapUtenti.val() || {}; // Mappa UID -> Nome Cognome const uidToName = {}; Object.entries(utenti).forEach(([uid,u])=>{ uidToName[uid] = `${u.nome} ${u.cognome}`; }); // Mappa PID (Rosa ID) -> Nome Cognome const pidToName = {}; Object.entries(rosa).forEach(([pid,g])=>{ pidToName[pid] = `${g.nome} ${g.cognome}`; }); // Trova le ultime 3 partite con candidature attive const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); }; const recentMatches = Object.entries(cal) .filter(([_,m])=>!m.risultato || m.risultato==='N/D') .sort((a,b)=> toDate(a[1].data)-toDate(b[1].data)) .slice(0, 3); // Ordina dalla più vecchia alla più recente (future) e prendi le prime 3 if(!recentMatches.length){ ul.innerHTML = '<div class="help">Nessuna partita futura con candidature.</div>'; return; } ul.innerHTML = ''; for(const [matchId, m] of recentMatches){ const cand = m.candidature || {}; const candidatiUids = Object.entries(cand).filter(([_,v])=>v).map(([uid,_])=>uid); const candidatiNomi = candidatiUids .map(uid => uidToName[uid] || `UID Sconosciuto (${uid.substring(0,4)}...)`) .sort(); const candidatiHtml = candidatiNomi.length > 0 ? `<ul>${candidatiNomi.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul>` : `<div class="help">Nessuna candidatura.</div>`; ul.innerHTML += ` <li class="card"> <h4>vs ${escapeHtml(m.avversaria)} (${m.data})</h4> <div class="help"><b>${candidatiNomi.length}</b> Disponibili:</div> ${candidatiHtml} </li> `; } } // Gestione dati (CRUD) window.loadCrudGiocatori = async ()=>{ const body = byId('crud-giocatori-body'); body.innerHTML=''; const snap = await get(ref(db,'rosa')); const data = snap.val()||{}; const rows = Object.entries(data).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0)); if(!rows.length) return; for(const [id,g] of rows){ const tr = document.createElement('tr'); tr.innerHTML = ` <td><input data-gi="${id}" data-k="nome" value="${escapeHtml(g.nome||'')}" /></td> <td><input data-gi="${id}" data-k="cognome" value="${escapeHtml(g.cognome||'')}" /></td> <td><input data-gi="${id}" data-k="numero" type="number" min="1" max="99" value="${g.numero||''}" style="width:70px" /></td> <td> <select data-gi="${id}" data-k="ruolo"> ${['Portiere','Terzino sinistro','Terzino destro','Difensore centrale','Centrocampista centrale','Centrocampista sinistro','Centrocampista destro','Attaccante centrale'] .map(r=>`<option ${g.ruolo===r?'selected':''}>${r}</option>`).join('')} </select> </td> <td> <select data-gi="${id}" data-k="stato"> ${['Titolare','Riserva'].map(s=>`<option ${g.stato===s?'selected':''}>${s}</option>`).join('')} </select> </td> <td><input data-gi="${id}" data-k="presenze" type="number" value="${g.presenze||0}" style="width:70px" /></td> <td class="row" style="gap:6px"> <button class="btn btn--admin" onclick="crudSaveGiocatore('${id}')">Salva</button> <button class="btn" onclick="crudDeleteGiocatore('${id}')">Elimina</button> </td>`; body.appendChild(tr); } }; window.crudSaveGiocatore = async (id)=>{ if(!isAdmin) return; const sels = document.querySelectorAll(`[data-gi="${id}"]`); const upd = {}; sels.forEach(i => { const k=i.getAttribute('data-k'); let val=i.value; if(['numero','presenze'].includes(k)) val=+val||0; upd[k]=val; }); await update(ref(db,'rosa/'+id),upd); alert('Salvato.'); loadRosa(); }; window.crudDeleteGiocatore = async (id)=>{ if(!isAdmin) return; if(!confirm('Eliminare questo giocatore?')) return; await remove(ref(db,'rosa/'+id)); alert('Eliminato.'); window.loadCrudGiocatori(); loadRosa(); }; window.loadCrudPartite = async ()=>{ const body = byId('crud-partite-body'); body.innerHTML=''; const snap = await get(ref(db,'calendario')); const data = snap.val()||{}; const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); }; const rows = Object.entries(data).sort((a,b)=> toDate(b[1].data)-toDate(a[1].data)); if(!rows.length) return; for(const [id,m] of rows){ const tr = document.createElement('tr'); tr.innerHTML = ` <td><input data-partita="${id}" data-k="avversaria" value="${escapeHtml(m.avversaria||'')}" /></td> <td><input data-partita="${id}" data-k="data" value="${escapeHtml(m.data||'')}" style="width:100px" /></td> <td><input data-partita="${id}" data-k="orario" value="${escapeHtml(m.orario||'')}" style="width:60px" /></td> <td><input data-partita="${id}" data-k="campo" value="${escapeHtml(m.campo||'')}" /></td> <td> <select data-partita="${id}" data-k="casa"> <option value="true" ${m.casa?'selected':''}>Casa</option> <option value="false" ${!m.casa?'selected':''}>Trasferta</option> </select> </td> <td><input data-partita="${id}" data-k="risultato" value="${escapeHtml(m.risultato||'N/D')}" style="width:70px" /></td> <td><input data-partita="${id}" data-k="minutiPartita" type="number" value="${m.minutiPartita||50}" style="width:70px" /></td> <td class="row" style="gap:6px"> <button class="btn btn--admin" onclick="crudSavePartita('${id}')">Salva</button> <button class="btn" onclick="crudDeletePartita('${id}')">Elimina</button> </td>`; body.appendChild(tr); } }; window.crudSavePartita = async (id)=>{ if(!isAdmin) return; const sels = document.querySelectorAll(`[data-partita="${id}"]`); const upd = {}; sels.forEach(i => { const k=i.getAttribute('data-k'); let val=i.value; if(k==='casa') val=val==='true'; if(k==='minutiPartita') val=+val||50; upd[k]=val; }); await update(ref(db,'calendario/'+id),upd); alert('Salvato.'); window.loadCrudPartite(); window.loadProssimeGiornate(false); }; window.crudDeletePartita = async (id)=>{ if(!isAdmin) return; if(!confirm('Eliminare questa partita?')) return; await remove(ref(db,'calendario/'+id)); alert('Eliminata.'); window.loadCrudPartite(); window.loadProssimeGiornate(false); }; window.showAdminCandidatureEditor = async (matchId)=>{ if(!isAdmin) return; byId('crud-candidature-panel').style.display='block'; byId('crud-candidature').style.display='block'; byId('crud-partite').style.display='none'; const tbody = byId('crud-candidature-body'); tbody.innerHTML='Caricamento...'; const [snapRosa, snapCand, snapUtenti] = await Promise.all([ get(ref(db,'rosa')), get(ref(db,`calendario/${matchId}/candidature`)), get(ref(db,'utenti')) ]); const rosa = snapRosa.val()||{}; const cand = snapCand.val()||{}; // mappa nome cognome -> uid (se registrato) const nameToUid = {}; Object.entries(utenti).forEach(([uid,u])=>{ if(u.nome&&u.cognome) nameToUid[`${u.nome} ${u.cognome}`]=uid; }); const rows = Object.entries(rosa).map(([pid,g])=>{ const display = `${g.nome} ${g.cognome} (#${g.numero})`; const uid = nameToUid[`${g.nome} ${g.cognome}`] || null; const checked = uid ? !!cand[uid] : false; return {pid, display, uid, checked}; }).sort((a,b)=> a.display.localeCompare(b.display,'it')); tbody.innerHTML = ''; for(const r of rows){ const tr = document.createElement('tr'); tr.innerHTML = ` <td>${escapeHtml(r.display)}</td> <td>${r.uid ? r.uid : '<span class="help">Nessun utente collegato</span>'}</td> <td><input type="checkbox" ${r.checked?'checked':''} data-cand="${r.uid||''}" ${r.uid?'':'disabled'} /></td>`; tbody.appendChild(tr); } // Aggancia il pulsante Salva const saveBtn = byId('crud-candidature-save'); saveBtn.onclick = async ()=>{ if(!isAdmin) return; const inputs = tbody.querySelectorAll('input[type="checkbox"][data-cand]'); const updates = {}; inputs.forEach(chk=>{ const uid = chk.getAttribute('data-cand'); if(!uid) return; updates[`/calendario/${matchId}/candidature/${uid}`] = chk.checked; }); await update(ref(db), updates); alert('Candidature aggiornate.'); window.loadProssimeGiornate(true); window.loadProssimeGiornate(false); }; }; window.closeCandidatureEditor = ()=>{ byId('crud-candidature-panel').style.display='none'; byId('crud-candidature').style.display='none'; byId('crud-partite').style.display='block'; }; /* ===== NUOVE FUNZIONI ADMIN: GESTIONE PRESTAZIONI PARTITA ===== */ window.showValutazionePartitaForm = async (matchId, avv) => { if(!isAdmin) return; window.showAdminSection('admin-prestazioni-partita-section'); const form = byId('prestazioni-form'); form.innerHTML = 'Caricamento...'; form.setAttribute('onsubmit', `saveValutazione(event, '${matchId}')`); const [snapRosa, snapPrestazioni, snapMatch] = await Promise.all([ get(ref(db, 'rosa')), get(ref(db, `prestazioni/${matchId}`)), get(ref(db, `calendario/${matchId}`)) ]); const rosa = snapRosa.val() || {}; const prestazioni = snapPrestazioni.val() || {}; const matchData = snapMatch.val() || {}; const allPlayers = Object.entries(rosa) .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0)); if(!allPlayers.length){ form.innerHTML = `<h3>Valuta vs ${escapeHtml(avv)}</h3><p>Nessun giocatore inserito in rosa.</p>`; return; } let html = `<h3>Valuta vs ${escapeHtml(avv)}</h3> <table class="table"> <thead> <tr> <th>#</th> <th>Giocatore</th> <th>Voto (0-10)</th> <th>Goal</th> </tr> </thead> <tbody>`; allPlayers.forEach(([pid, g]) => { const current = prestazioni[pid] || {}; const nomeCompleto = `${g.nome} ${g.cognome}`; const voto = current.voto !== null ? current.voto : ''; // Mantiene vuoto se null const goal = current.goal || 0; html += ` <tr> <td>${g.numero}</td> <td>${escapeHtml(nomeCompleto)}</td> <td><input type="number" data-pid="${pid}" data-key="voto" value="${voto}" min="0" max="10" step="0.5" style="width:80px" /></td> <td><input type="number" data-pid="${pid}" data-key="goal" value="${goal}" min="0" style="width:80px" /></td> </tr> `; }); html += `</tbody></table> <div class="actions"> <button class="btn btn--accent" type="submit">Salva Valutazioni</button> </div>`; form.innerHTML = html; }; window.saveValutazione = async (e, matchId) => { e.preventDefault(); if(!isAdmin) return; const inputs = byId('prestazioni-form').querySelectorAll('input[data-pid]'); const updates = {}; inputs.forEach(input => { const pid = input.dataset.pid; const key = input.dataset.key; if (!pid || !key) return; if (!updates[pid]) updates[pid] = {}; let value; if (key === 'voto') { value = (input.value === '') ? null : Number(input.value); // Salva '' come null } else { value = Number(input.value || 0); // Salva '' o 0 come 0 } updates[pid][key] = (isNaN(value) && value !== null) ? (key === 'voto' ? null : 0) : value; }); const finalUpdates = {}; // Filtra i giocatori che hanno almeno un dato (voto o goal) Object.entries(updates).forEach(([pid, data]) => { // Salva se il voto è null (non dato) O è un numero, // E i goal sono un numero (incluso 0) if ((data.voto === null || typeof data.voto === 'number') && typeof data.goal === 'number') { finalUpdates[pid] = data; } }); try { await set(ref(db, `prestazioni/${matchId}`), finalUpdates); alert('Valutazioni salvate con successo!'); window.showAdminSection('admin-gestione-dati-section'); // Aggiorna l'aggregato in background window.loadPrestazioniAggregato(); } catch (err) { alert('Errore salvataggio: ' + err.message); console.error(err); } }; 
-    
-    // ... FUNZIONE showFormazionePubblica (fine)
+    // Funzione per visualizzare tutte le formazioni (pre-esistente) 
+    function visualizeAllFormations(avv,formazioni){ 
+        const out = document.createElement('div'); 
+        out.innerHTML = `<h3>${Object.keys(formazioni).length} formazioni vs ${avv}</h3><div class="help">Titolare (0’) + mappe dopo ogni sostituzione.</div>`; 
+        const wrap = document.createElement('div'); 
+        wrap.className='grid cols-3'; 
+        out.appendChild(wrap); 
+        
+        get(ref(db,'rosa')).then(s=>{ 
+            const allPlayers = s.val()||{}; 
+            Object.keys(formazioni).forEach(min=>{ 
+                const pane = document.createElement('div'); 
+                pane.className='card'; 
+                pane.innerHTML = `<div style="font-weight:800;margin-bottom:6px">Minuto ${min}${min==='0'?' (Titolare)':''}</div><div class="field"></div>`; 
+                wrap.appendChild(pane); 
+                
+                const field = pane.querySelector('.field'); 
+                const f = formazioni[min].formazione; 
+                
+                Object.entries(f).forEach(([ruolo,pid])=>{ 
+                    const pl = allPlayers[pid]; 
+                    const pos = POS_331[ruolo]; 
+                    if(!pl||!pos) return; 
+                    
+                    const mk = document.createElement('div'); 
+                    mk.className='marker'; 
+                    mk.style.top=pos.top; 
+                    mk.style.left=pos.left; 
+                    mk.innerHTML = `<b>${escapeHtml(pl.cognome)}</b><br>${ruolo}`; 
+                    field.appendChild(mk); 
+                }); 
+            }); 
+        }); 
+        
+        const box = byId('formazione-content'); 
+        box.innerHTML=''; 
+        box.appendChild(out); 
+    } 
+
+    // Helper: incremento presenze multiplo (in /rosa) 
+    async function incrementPresenzeInRosa(playerIdsSet){ 
+        const presenti = new Set(playerIdsSet); // Assicura unicità 
+        if(presenti.size === 0) return; 
+        
+        const snap = await get(ref(db,'rosa')); 
+        const rosa = snap.val() || {}; 
+        const updates = {}; 
+        
+        presenti.forEach(pid => { 
+            const g = rosa[pid]; 
+            if(g){ 
+                updates[`/rosa/${pid}/presenze`] = (g.presenze || 0) + 1; 
+            } 
+        }); 
+        
+        if(Object.keys(updates).length){ 
+            await update(ref(db), updates); 
+        } 
+    } 
+
+    // Admin: visualizzazione candidature compatta 
+    async function loadCandidature(){ 
+        if(!isAdmin) return; 
+        const ul = byId('candidature-list'); 
+        if(!ul) return; 
+        ul.innerHTML = '<li>Caricamento...</li>'; 
+        
+        const [snapCal, snapRosa, snapUtenti] = await Promise.all([ 
+            get(ref(db,'calendario')), 
+            get(ref(db,'rosa')), 
+            get(ref(db,'utenti')) 
+        ]); 
+        
+        const cal = snapCal.val() || {}; 
+        const rosa = snapRosa.val() || {}; 
+        const utenti = snapUtenti.val() || {}; 
+        
+        // Mappa UID -> Nome Cognome 
+        const uidToName = {}; 
+        Object.entries(utenti).forEach(([uid,u])=>{ 
+            uidToName[uid] = `${u.nome} ${u.cognome}`; 
+        }); 
+        
+        // Mappa PID (Rosa ID) -> Nome Cognome 
+        const pidToName = {}; 
+        Object.entries(rosa).forEach(([pid,g])=>{ 
+            pidToName[pid] = `${g.nome} ${g.cognome}`; 
+        }); 
+        
+        // Trova le ultime 3 partite con candidature attive 
+        const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); }; 
+        const recentMatches = Object.entries(cal) 
+            .filter(([_,m])=>!m.risultato || m.risultato==='N/D') 
+            .sort((a,b)=> toDate(a[1].data)-toDate(b[1].data)) 
+            .slice(0, 3); // Ordina dalla più vecchia alla più recente (future) e prendi le prime 3 
+        
+        if(!recentMatches.length){ 
+            ul.innerHTML = '<div class="help">Nessuna partita futura con candidature.</div>'; 
+            return; 
+        } 
+        
+        ul.innerHTML = ''; 
+        
+        for(const [matchId, m] of recentMatches){ 
+            const cand = m.candidature || {}; 
+            const candidatiUids = Object.entries(cand).filter(([_,v])=>v).map(([uid,_])=>uid); 
+            
+            const candidatiNomi = candidatiUids 
+                .map(uid => uidToName[uid] || `UID Sconosciuto (${uid.substring(0,4)}...)`) 
+                .sort(); 
+            
+            const candidatiHtml = candidatiNomi.length > 0 ? 
+                `<ul>${candidatiNomi.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul>` : 
+                `<div class="help">Nessuna candidatura.</div>`; 
+                
+            ul.innerHTML += ` 
+                <li class="card"> 
+                    <h4>vs ${escapeHtml(m.avversaria)} (${m.data})</h4> 
+                    <div class="help"><b>${candidatiNomi.length}</b> Disponibili:</div> 
+                    ${candidatiHtml} 
+                </li> `; 
+        } 
+    } 
+
+    // Gestione dati (CRUD) 
+    window.loadCrudGiocatori = async ()=>{ 
+        const body = byId('crud-giocatori-body'); 
+        body.innerHTML=''; 
+        
+        const snap = await get(ref(db,'rosa')); 
+        const data = snap.val()||{}; 
+        const rows = Object.entries(data).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0)); 
+        
+        if(!rows.length) return; 
+        
+        for(const [id,g] of rows){ 
+            const tr = document.createElement('tr'); 
+            tr.innerHTML = ` 
+                <td><input data-gi="${id}" data-k="nome" value="${escapeHtml(g.nome||'')}" /></td> 
+                <td><input data-gi="${id}" data-k="cognome" value="${escapeHtml(g.cognome||'')}" /></td> 
+                <td><input data-gi="${id}" data-k="numero" type="number" min="1" max="99" value="${g.numero||''}" style="width:70px" /></td> 
+                <td> 
+                    <select data-gi="${id}" data-k="ruolo"> 
+                        ${['Portiere','Terzino sinistro','Terzino destro','Difensore centrale','Centrocampista centrale','Centrocampista sinistro','Centrocampista destro','Attaccante centrale'] 
+                        .map(r=>`<option ${g.ruolo===r?'selected':''}>${r}</option>`).join('')} 
+                    </select> 
+                </td> 
+                <td> 
+                    <select data-gi="${id}" data-k="stato"> 
+                        ${['Titolare','Riserva'].map(s=>`<option ${g.stato===s?'selected':''}>${s}</option>`).join('')} 
+                    </select> 
+                </td> 
+                <td><input data-gi="${id}" data-k="presenze" type="number" value="${g.presenze||0}" style="width:70px" /></td> 
+                <td class="row" style="gap:6px"> 
+                    <button class="btn btn--admin" onclick="crudSaveGiocatore('${id}')">Salva</button> 
+                    <button class="btn" onclick="crudDeleteGiocatore('${id}')">Elimina</button> 
+                </td>`; 
+            body.appendChild(tr); 
+        } 
+    } 
+
+    window.crudSaveGiocatore = async (id)=>{ 
+        if(!isAdmin) return; 
+        const sels = document.querySelectorAll(`[data-gi="${id}"]`); 
+        const upd = {}; 
+        
+        sels.forEach(i => { 
+            const k=i.getAttribute('data-k'); 
+            let val=i.value; 
+            if(['numero','presenze'].includes(k)) val=+val||0; 
+            upd[k]=val; 
+        }); 
+        
+        await update(ref(db,'rosa/'+id),upd); 
+        alert('Salvato.'); 
+        loadRosa(); 
+    } 
+
+    window.crudDeleteGiocatore = async (id)=>{ 
+        if(!isAdmin) return; 
+        if(!confirm('Eliminare questo giocatore?')) return; 
+        
+        await remove(ref(db,'rosa/'+id)); 
+        alert('Eliminato.'); 
+        window.loadCrudGiocatori(); 
+        loadRosa(); 
+    } 
+
+    window.loadCrudPartite = async ()=>{ 
+        const body = byId('crud-partite-body'); 
+        body.innerHTML=''; 
+        
+        const snap = await get(ref(db,'calendario')); 
+        const data = snap.val()||{}; 
+        const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); }; 
+        const rows = Object.entries(data).sort((a,b)=> toDate(b[1].data)-toDate(a[1].data)); 
+        
+        if(!rows.length) return; 
+        
+        for(const [id,m] of rows){ 
+            const tr = document.createElement('tr'); 
+            tr.innerHTML = ` 
+                <td><input data-partita="${id}" data-k="avversaria" value="${escapeHtml(m.avversaria||'')}" /></td> 
+                <td><input data-partita="${id}" data-k="data" value="${escapeHtml(m.data||'')}" style="width:100px" /></td> 
+                <td><input data-partita="${id}" data-k="orario" value="${escapeHtml(m.orario||'')}" style="width:60px" /></td> 
+                <td><input data-partita="${id}" data-k="campo" value="${escapeHtml(m.campo||'')}" /></td> 
+                <td> 
+                    <select data-partita="${id}" data-k="casa"> 
+                        <option value="true" ${m.casa?'selected':''}>Casa</option> 
+                        <option value="false" ${!m.casa?'selected':''}>Trasferta</option> 
+                    </select> 
+                </td> 
+                <td><input data-partita="${id}" data-k="risultato" value="${escapeHtml(m.risultato||'N/D')}" style="width:70px" /></td> 
+                <td><input data-partita="${id}" data-k="minutiPartita" type="number" value="${m.minutiPartita||50}" style="width:70px" /></td> 
+                <td class="row" style="gap:6px"> 
+                    <button class="btn btn--admin" onclick="crudSavePartita('${id}')">Salva</button> 
+                    <button class="btn" onclick="crudDeletePartita('${id}')">Elimina</button> 
+                </td>`; 
+            body.appendChild(tr); 
+        } 
+    } 
+
+    window.crudSavePartita = async (id)=>{ 
+        if(!isAdmin) return; 
+        const sels = document.querySelectorAll(`[data-partita="${id}"]`); 
+        const upd = {}; 
+        
+        sels.forEach(i => { 
+            const k=i.getAttribute('data-k'); 
+            let val=i.value; 
+            if(k==='casa') val=val==='true'; 
+            if(k==='minutiPartita') val=+val||50; 
+            upd[k]=val; 
+        }); 
+        
+        await update(ref(db,'calendario/'+id),upd); 
+        alert('Salvato.'); 
+        window.loadCrudPartite(); 
+        window.loadProssimeGiornate(false); 
+    } 
+
+    window.crudDeletePartita = async (id)=>{ 
+        if(!isAdmin) return; 
+        if(!confirm('Eliminare questa partita?')) return; 
+        
+        await remove(ref(db,'calendario/'+id)); 
+        alert('Eliminata.'); 
+        window.loadCrudPartite(); 
+        window.loadProssimeGiornate(false); 
+    } 
+
+    window.showAdminCandidatureEditor = async (matchId)=>{ 
+        if(!isAdmin) return; 
+        byId('crud-candidature-panel').style.display='block'; 
+        byId('crud-candidature').style.display='block'; 
+        byId('crud-partite').style.display='none'; 
+        
+        const tbody = byId('crud-candidature-body'); 
+        tbody.innerHTML='Caricamento...'; 
+        
+        const [snapRosa, snapCand, snapUtenti] = await Promise.all([ 
+            get(ref(db,'rosa')), 
+            get(ref(db,`calendario/${matchId}/candidature`)), 
+            get(ref(db,'utenti')) 
+        ]); 
+        
+        const rosa = snapRosa.val()||{}; 
+        const cand = snapCand.val()||{}; 
+        
+        // mappa nome cognome -> uid (se registrato) 
+        const nameToUid = {}; 
+        Object.entries(utenti).forEach(([uid,u])=>{ 
+            if(u.nome&&u.cognome) nameToUid[`${u.nome} ${u.cognome}`]=uid; 
+        }); 
+        
+        const rows = Object.entries(rosa).map(([pid,g])=>{ 
+            const display = `${g.nome} ${g.cognome} (#${g.numero})`; 
+            const uid = nameToUid[`${g.nome} ${g.cognome}`] || null; 
+            const checked = uid ? !!cand[uid] : false; 
+            return {pid, display, uid, checked}; 
+        }).sort((a,b)=> a.display.localeCompare(b.display,'it')); 
+        
+        tbody.innerHTML = ''; 
+        
+        for(const r of rows){ 
+            const tr = document.createElement('tr'); 
+            tr.innerHTML = ` 
+                <td>${escapeHtml(r.display)}</td> 
+                <td>${r.uid ? r.uid : '<span class="help">Nessun utente collegato</span>'}</td> 
+                <td><input type="checkbox" ${r.checked?'checked':''} data-cand="${r.uid||''}" ${r.uid?'':'disabled'} /></td>`; 
+            tbody.appendChild(tr); 
+        } 
+        
+        // Aggancia il pulsante Salva 
+        const saveBtn = byId('crud-candidature-save'); 
+        saveBtn.onclick = async ()=>{ 
+            if(!isAdmin) return; 
+            const inputs = tbody.querySelectorAll('input[type="checkbox"][data-cand]'); 
+            const updates = {}; 
+            
+            inputs.forEach(chk=>{ 
+                const uid = chk.getAttribute('data-cand'); 
+                if(!uid) return; 
+                updates[`/calendario/${matchId}/candidature/${uid}`] = chk.checked; 
+            }); 
+            
+            await update(ref(db), updates); 
+            alert('Candidature aggiornate.'); 
+            window.loadProssimeGiornate(true); 
+            window.loadProssimeGiornate(false); 
+        }; 
+    } 
+
+    window.closeCandidatureEditor = ()=>{ 
+        byId('crud-candidature-panel').style.display='none'; 
+        byId('crud-candidature').style.display='none'; 
+        byId('crud-partite').style.display='block'; 
+    } 
+
+    /* ===== NUOVE FUNZIONI ADMIN: GESTIONE PRESTAZIONI PARTITA ===== */ 
+    window.showValutazionePartitaForm = async (matchId, avv) => { 
+        if(!isAdmin) return; 
+        window.showAdminSection('admin-prestazioni-partita-section'); 
+        
+        const form = byId('prestazioni-form'); 
+        form.innerHTML = 'Caricamento...'; 
+        form.setAttribute('onsubmit', `saveValutazione(event, '${matchId}')`); 
+        
+        const [snapRosa, snapPrestazioni, snapMatch] = await Promise.all([ 
+            get(ref(db, 'rosa')), 
+            get(ref(db, `prestazioni/${matchId}`)), 
+            get(ref(db, `calendario/${matchId}`)) 
+        ]); 
+        
+        const rosa = snapRosa.val() || {}; 
+        const prestazioni = snapPrestazioni.val() || {}; 
+        const matchData = snapMatch.val() || {}; 
+        
+        const allPlayers = Object.entries(rosa) 
+            .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0)); 
+            
+        if(!allPlayers.length){ 
+            form.innerHTML = `<h3>Valuta vs ${escapeHtml(avv)}</h3><p>Nessun giocatore inserito in rosa.</p>`; 
+            return; 
+        } 
+        
+        let html = `<h3>Valuta vs ${escapeHtml(avv)}</h3> 
+            <table class="table"> 
+                <thead> 
+                    <tr> 
+                        <th>#</th> 
+                        <th>Giocatore</th> 
+                        <th>Voto (0-10)</th> 
+                        <th>Goal</th> 
+                    </tr> 
+                </thead> 
+                <tbody>`; 
+                
+        allPlayers.forEach(([pid, g]) => { 
+            const current = prestazioni[pid] || {}; 
+            const nomeCompleto = `${g.nome} ${g.cognome}`; 
+            const voto = current.voto !== null ? current.voto : ''; // Mantiene vuoto se null 
+            const goal = current.goal || 0; 
+            
+            html += ` 
+                <tr> 
+                    <td>${g.numero}</td> 
+                    <td>${escapeHtml(nomeCompleto)}</td> 
+                    <td><input type="number" data-pid="${pid}" data-key="voto" value="${voto}" min="0" max="10" step="0.5" style="width:80px" /></td> 
+                    <td><input type="number" data-pid="${pid}" data-key="goal" value="${goal}" min="0" style="width:80px" /></td> 
+                </tr> `; 
+        }); 
+        
+        html += `</tbody></table> 
+            <div class="actions"> 
+                <button class="btn btn--accent" type="submit">Salva Valutazioni</button> 
+            </div>`; 
+            
+        form.innerHTML = html; 
+    } 
+
+    window.saveValutazione = async (e, matchId) => { 
+        e.preventDefault(); 
+        if(!isAdmin) return; 
+        
+        const inputs = byId('prestazioni-form').querySelectorAll('input[data-pid]'); 
+        const updates = {}; 
+        
+        inputs.forEach(input => { 
+            const pid = input.dataset.pid; 
+            const key = input.dataset.key; 
+            if (!pid || !key) return; 
+            if (!updates[pid]) updates[pid] = {}; 
+            
+            let value; 
+            if (key === 'voto') { 
+                value = (input.value === '') ? null : Number(input.value); // Salva '' come null 
+            } else { 
+                value = Number(input.value || 0); // Salva '' o 0 come 0 
+            } 
+            
+            updates[pid][key] = (isNaN(value) && value !== null) ? (key === 'voto' ? null : 0) : value; 
+        }); 
+        
+        const finalUpdates = {}; 
+        // Filtra i giocatori che hanno almeno un dato (voto o goal) 
+        Object.entries(updates).forEach(([pid, data]) => { 
+            // Salva se il voto è null (non dato) O è un numero, 
+            // E i goal sono un numero (incluso 0) 
+            if ((data.voto === null || typeof data.voto === 'number') && typeof data.goal === 'number') { 
+                finalUpdates[pid] = data; 
+            } 
+        }); 
+        
+        try { 
+            await set(ref(db, `prestazioni/${matchId}`), finalUpdates); 
+            alert('Valutazioni salvate con successo!'); 
+            
+            // Aggiorna l'aggregato in background
+            window.loadPrestazioniAggregato(); 
+            // Torna alla lista partite amministrative
+            window.showAdminSection('admin-calendario-section');
+        } catch (err) { 
+            alert('Errore salvataggio: ' + err.message); 
+            console.error(err); 
+        } 
+    }
 
     </script>
 </head> 
