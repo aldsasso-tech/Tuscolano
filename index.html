@@ -1369,7 +1369,7 @@ const loadClassifica = async () => {
       const snap = await get(ref(db,'calendario')); const data = snap.val()||{};
       const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
       const rows = Object.entries(data).sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
-      if(!rows.length){ body.innerHTML = `<tr><td colspan="9"><div class="help">Nessuna partita.</div></td></tr>`; return; }
+      if(!rows.length){ body.innerHTML = `<tr><td colspan="10"><div class="help">Nessuna partita.</div></td></tr>`; return; }
       for(const [id,m] of rows){
         const tr = document.createElement('tr');
         // AGGIUNTO BOTTONE "Valuta..."
@@ -2016,7 +2016,7 @@ window.loadPrestazioniAggregato = async () => {
     ]);
     const rosa = snapRosa.val()||{};
     
-    // ===== CORREZIONE BUG =====
+    // ===== CORREZIONE ERRORE AGGREGATO =====
     // Logica semplificata e corretta per gestire lo snapshot
     const prestazioni = snapPrest.exists() ? (snapPrest.val() || {}) : {};
     // ===== FINE CORREZIONE =====
@@ -2104,6 +2104,7 @@ window.loadPrestazioniAggregato = async () => {
 /**
  * FUNZIONE CORRETTA: loadProssimeGiornate
  * Include il pulsante "Prestazioni" (pubblico) e RIMUOVE "Valuta" (admin)
+ * Layout pulsanti pubblici corretto (singola riga)
  */
 window.loadProssimeGiornate = async function(asAdmin){
   const listId = asAdmin ? 'admin-calendario-list' : 'calendario-list';
@@ -2141,23 +2142,22 @@ window.loadProssimeGiornate = async function(asAdmin){
     } else {
       prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
     }
-    
-    // ----- BOTTONE VALUTA ADMIN RIMOSSO DA QUI -----
-
 
     const li = document.createElement('li'); li.className='card';
+    // ===== CORREZIONE LAYOUT PULSANTI =====
     li.innerHTML = `
-      <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div class="row" style="justify-content:space-between;align-items:flex-start; flex-direction: column;">
         <div>
           <div style="font-weight:800;font-size:1.05rem">vs ${m.avversaria||''}</div>
           <div class="player-sub">${m.data||''} • ${m.orario||''} • ${m.campo||''} • ${m.casa? 'Casa':'Trasferta'}</div>
           <div class="player-sub">Candidature: <b>${candCount}</b></div>
           <div class="player-sub">Risultato: <b>${m.risultato||'N/D'}</b></div>
         </div>
-        <div class="row" style="flex-direction: column; align-items: stretch; width: 100%; gap: 6px; margin-top: 8px;">
+        <div class="row" style="width: 100%; gap: 6px; margin-top: 8px; flex-wrap:wrap; justify-content:flex-start;">
           ${!asAdmin ? `
-            <div class="row" style="gap:6px">${candButton} ${isPublished ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria||'')}')">Vedi Formazione</button>` : ''}</div>
-            <div class="row" style="gap:6px">${prestazioniBtn}</div>
+              ${candButton} 
+              ${isPublished ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria||'')}')">Vedi Formazione</button>` : ''}
+              ${prestazioniBtn}
           `:''}
           ${asAdmin ? `
             <button class="btn btn--admin" onclick="showFormazioneForm('${matchId}','${escapeHtml(m.avversaria||'')}')">Formazione & Sost.</button>
@@ -2165,6 +2165,7 @@ window.loadProssimeGiornate = async function(asAdmin){
           `:''}
         </div>
       </div>`;
+    // ===== FINE CORREZIONE LAYOUT =====
     ul.appendChild(li);
   }
 };
