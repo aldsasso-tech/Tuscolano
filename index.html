@@ -253,7 +253,7 @@
       'admin-inserimento-giocatori-section',
       'admin-inserimento-giornate-section',
       'admin-calendario-section',
-      'admin-formazione-section',
+      'admin-formazione-section', // Mantenuto per la logica di showFormazioneForm
       'admin-statistiche-section', // Mantenuta per il form "Risultato"
       'admin-prestazioni-partita-section',
       'admin-candidature-section',
@@ -688,7 +688,7 @@
     }
 
     /**
-     * FUNZIONE CORRETTA: loadProssimeGiornate (SPOSTATA QUI)
+     * FUNZIONE loadProssimeGiornate (SPOSTATA QUI)
      * Include il pulsante "Prestazioni" (pubblico) e RIMUOVE "Valuta" (admin)
      * Layout pulsanti pubblici corretto (singola riga)
      */
@@ -767,22 +767,62 @@
     };
 
     /**
-     * FUNZIONE loadStatistiche (SPOSTATA QUI)
-     * Carica solo i risultati della squadra.
+     * FUNZIONE loadStatistiche (MODIFICATA)
+     * 1. Ordina dalla più recente alla più vecchia.
+     * 2. Inserisce l'esito.
+     * 3. Layout più allineato.
      */
     async function loadStatistiche(){
-      const rl = byId('statistiche-risultati-list'); if(rl){ rl.innerHTML=''; }
+      const rl = byId('statistiche-risultati-list'); 
+      if(rl){ rl.innerHTML=''; }
       
-      const snapCal = await get(ref(db,'calendario')); const cal = snapCal.val()||{};
-      const rows = Object.entries(cal);
+      const snapCal = await get(ref(db,'calendario')); 
+      const cal = snapCal.val()||{};
+      const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
+      
+      // Ordina dalla più recente alla più vecchia
+      const rows = Object.entries(cal)
+        .sort((a,b)=> toDate(b[1].data)-toDate(a[1].data)); 
+
       if(rl){
         if(!rows.length) rl.innerHTML = '<div class="help">Ancora nessun risultato.</div>';
+        
+        // Intestazione/Layout tabellare custom
+        rl.innerHTML = `<li class="card" style="font-weight:700; background:var(--yellow); color:var(--ink); margin-bottom: 6px; display:flex; justify-content:space-between; padding: 10px 16px;">
+            <div style="flex: 0 0 100px;">Data</div>
+            <div style="flex: 1;">Avversaria</div>
+            <div style="flex: 0 0 80px;">Risultato</div>
+            <div style="flex: 0 0 80px;">Esito</div>
+        </li>`;
+
         rows.forEach(([id,m])=>{
-          const li = document.createElement('li'); li.className='card';
-          li.innerHTML = `<div><b>${m.data}</b> • vs ${m.avversaria} — Risultato: <b>${m.risultato||'N/D'}</b></div>`;
+          // Colore Esito
+          let esitoClass = '';
+          if (m.esito === 'Vittoria') esitoClass = 'style="color:#0e7a0d; font-weight:900"';
+          else if (m.esito === 'Sconfitta') esitoClass = 'style="color:var(--red); font-weight:900"';
+          else if (m.esito === 'Pareggio') esitoClass = 'style="color:#333; font-weight:900"';
+
+          const esitoDisplay = m.esito || 'N/D';
+          
+          const li = document.createElement('li'); 
+          li.className='card';
+          li.style.marginBottom = '6px';
+          li.style.display = 'flex';
+          li.style.justifyContent = 'space-between';
+          li.style.gap = '10px';
+
+          li.innerHTML = `
+            <div style="flex: 0 0 100px; font-weight: 600;">${m.data||'N/D'}</div>
+            <div style="flex: 1;">vs ${m.avversaria||'N/D'}</div>
+            <div style="flex: 0 0 80px;"><b>${m.risultato||'N/D'}</b></div>
+            <div style="flex: 0 0 80px;" ${esitoClass}>${esitoDisplay}</div>
+          `;
           rl.appendChild(li);
         });
       }
+      
+      // Carica sempre anche l'aggregato giocatori
+      window.loadPrestazioniAggregato();
     }
     
     /**
@@ -1046,7 +1086,7 @@
       const campo = v('match-campo');
       const casa = v('match-casa')==='si';
       if(!avversaria||!data||!orario||!campo) return alert('Compila tutti i campi');
-      const rec = {avversaria,data,orario,campo,casa,risultato:'N/D',formazionePubblicata:false};
+      const rec = {avversaria,data,orario,campo,casa,risultato:'N/D',esito:'N/D',formazionePubblicata:false}; // AGGIUNTO esito: 'N/D'
       await set(push(ref(db,'calendario')),rec);
       alert('Giornata inserita');
       byId('match-form').reset();
@@ -1054,14 +1094,34 @@
       window.loadProssimeGiornate(false);
     };
 
-    window.showRisultatoForm = (matchId,avv)=>{
+    /**
+     * FUNZIONE MODIFICATA: showRisultatoForm
+     * Aggiunto campo Esito (Vittoria/Sconfitta/Pareggio/N/D)
+     */
+    window.showRisultatoForm = async (matchId,avv)=>{
       window.showAdminSection('admin-statistiche-section');
       const box = byId('admin-statistiche-form');
+      
+      // Get current data to pre-fill the form
+      const snap = await get(ref(db, `calendario/${matchId}`));
+      const current = snap.val() || {};
+      const currentRisultato = current.risultato || 'N/D';
+      const currentEsito = current.esito || 'N/D';
+
       box.innerHTML = `
-        <h3>Risultato vs ${avv}</h3>
+        <h3>Risultato vs ${escapeHtml(avv)}</h3>
         <form onsubmit="saveMatchResult(event,'${matchId}')">
           <label>Risultato (es. 2-1)</label>
-          <input id="risultato-input" placeholder="es. 1-0" />
+          <input id="risultato-input" placeholder="es. 1-0" value="${escapeHtml(currentRisultato)}" required />
+          
+          <label>Esito</label>
+          <select id="esito-input" required>
+            <option value="N/D" ${currentEsito === 'N/D' ? 'selected' : ''}>Non Definito</option>
+            <option value="Vittoria" ${currentEsito === 'Vittoria' ? 'selected' : ''}>Vittoria</option>
+            <option value="Sconfitta" ${currentEsito === 'Sconfitta' ? 'selected' : ''}>Sconfitta</option>
+            <option value="Pareggio" ${currentEsito === 'Pareggio' ? 'selected' : ''}>Pareggio</option>
+          </select>
+          
           <div class="actions">
             <button class="btn btn--admin" type="submit">Salva</button>
             <button class="btn" type="button" onclick="showAdminSection('admin-calendario-section')">Annulla</button>
@@ -1070,12 +1130,18 @@
       `;
     };
 
+    /**
+     * FUNZIONE MODIFICATA: saveMatchResult
+     * Salva anche l'esito
+     */
     window.saveMatchResult = async (e,matchId)=>{
       e.preventDefault();
       if(!isAdmin) return;
       const risultato = v('risultato-input').trim() || 'N/D';
-      await update(ref(db,'calendario/'+matchId),{risultato});
-      alert('Risultato salvato.');
+      const esito = v('esito-input') || 'N/D'; // Nuovo campo
+      
+      await update(ref(db,'calendario/'+matchId),{risultato, esito}); // Salva esito
+      alert('Risultato e Esito salvati.');
       window.showAdminSection('admin-calendario-section');
       loadStatistiche();
       window.loadProssimeGiornate(false);
@@ -1458,7 +1524,7 @@
       if(!rows.length){ body.innerHTML = `<tr><td colspan="10"><div class="help">Nessuna partita.</div></td></tr>`; return; }
       for(const [id,m] of rows){
         const tr = document.createElement('tr');
-        // AGGIUNTO BOTTONE "Valuta..."
+        // AGGIUNTO CAMPO ESITO
         tr.innerHTML = `
           <td><input data-mi="${id}" data-k="avversaria" value="${escapeHtml(m.avversaria||'')}" /></td>
           <td><input data-mi="${id}" data-k="data" value="${escapeHtml(m.data||'')}" placeholder="gg/mm/aaaa" style="width:130px"/></td>
@@ -1471,6 +1537,14 @@
             </select>
           </td>
           <td><input data-mi="${id}" data-k="risultato" value="${escapeHtml(m.risultato||'N/D')}" style="width:100px"/></td>
+          <td>
+            <select data-mi="${id}" data-k="esito">
+              <option value="N/D" ${m.esito==='N/D'?'selected':''}>N/D</option>
+              <option value="Vittoria" ${m.esito==='Vittoria'?'selected':''}>Vittoria</option>
+              <option value="Sconfitta" ${m.esito==='Sconfitta'?'selected':''}>Sconfitta</option>
+              <option value="Pareggio" ${m.esito==='Pareggio'?'selected':''}>Pareggio</option>
+            </select>
+          </td>
           <td>
             <select data-mi="${id}" data-k="formazionePubblicata">
               <option value="true" ${m.formazionePubblicata?'selected':''}>Sì</option>
@@ -1661,8 +1735,7 @@
       const finalUpdates = {};
       // Filtra i giocatori che hanno almeno un dato (voto o goal)
       Object.entries(updates).forEach(([pid, data]) => {
-         // Salva se il voto è un numero (incluso 0) O se i goal sono > 0
-         // Modifica: Salva se il voto è null (non dato) O è un numero,
+         // Salva se il voto è null (non dato) O è un numero,
          // E i goal sono un numero (incluso 0)
          if ((data.voto === null || typeof data.voto === 'number') && typeof data.goal === 'number') {
             finalUpdates[pid] = data;
@@ -1699,7 +1772,8 @@
     <div class="nav-wrap">
       <button id="rosa-tab" class="tab" data-target="rosa-section" aria-current="page" onclick="showPublicSection('rosa-section')">Rosa</button>
       <button id="calendario-tab" class="tab" data-target="calendario-section" onclick="showPublicSection('calendario-section')">Calendario</button>
-      <button id="classifica-tab" class="tab" data-target="classifica-section" onclick="showPublicSection('classifica-section')">Classifica</button> <button id="statistiche-tab" class="tab" data-target="statistiche-section" onclick="showPublicSection('statistiche-section')">Prestazioni</button>
+      <button id="classifica-tab" class="tab" data-target="classifica-section" onclick="showPublicSection('classifica-section')">Classifica</button> 
+      <button id="statistiche-tab" class="tab" data-target="statistiche-section" onclick="showPublicSection('statistiche-section')">Prestazioni</button>
       <button id="video-tab" class="tab" data-target="video-section" onclick="showPublicSection('video-section')">Video</button>
       <a class="tab" href="https://www.romatornei.it/calcio-a-8-over-40-roma-sud/" target="_blank" rel="noopener">Torneo ↗</a>
       <button id="auth-toggle-btn" class="btn" onclick="handleAuthToggle()" aria-label="Apri il login">Login</button>
@@ -1711,7 +1785,6 @@
         <button class="tab" data-admin-target="admin-inserimento-giocatori-section" onclick="showAdminSection('admin-inserimento-giocatori-section')">Ins. giocatori</button>
         <button class="tab" data-admin-target="admin-inserimento-giornate-section" onclick="showAdminSection('admin-inserimento-giornate-section')">Ins. giornate</button>
         <button class="tab" data-admin-target="admin-calendario-section" onclick="showAdminSection('admin-calendario-section')">Gest. partite</button>
-        <button class="tab" data-admin-target="admin-formazione-section" onclick="showAdminSection('admin-formazione-section')">Formazione & sostit.</button>
         <button class="tab" data-admin-target="admin-candidature-section" onclick="showAdminSection('admin-candidature-section')">Gest. Candidature</button>
         <button class="tab" data-admin-target="admin-gestione-dati-section" onclick="showAdminSection('admin-gestione-dati-section')">Gest. dati</button>
         <button class="tab" data-admin-target="admin-video-section" onclick="showAdminSection('admin-video-section')">Ins. Video</button>
@@ -1757,7 +1830,9 @@
     <section id="statistiche-section" style="display:none">
       <h2>Prestazioni</h2>
       <h3>Risultati squadra</h3>
-      <ul id="statistiche-risultati-list" class="grid cols-2"></ul>
+      <div class="help">Lista ordinata dalla partita più recente.</div>
+      <ul id="statistiche-risultati-list">
+        </ul>
       
       <div id="prestazioni-aggregate-content">
           <h3>Riepilogo Giocatori</h3>
@@ -1854,10 +1929,10 @@
     </section>
 
     <section id="admin-statistiche-section" style="display:none">
-      <h2>Admin · Statistiche</h2>
+      <h2>Admin · Inserisci Risultato</h2>
       <div id="admin-statistiche-form">
         </div>
-      </section>
+    </section>
 
     <section id="admin-candidature-section" style="display:none">
       <h2>Admin · Gestione Candidature (Compact)</h2>
@@ -1892,7 +1967,7 @@
         <div style="overflow-x:auto;">
           <table class="table">
             <thead><tr>
-              <th>Avversaria</th><th>Data</th><th>Orario</th><th>Campo</th><th>Casa</th><th>Ris.</th><th>Publ. Form.</th><th>Azioni</th><th>Extra</th><th>Prestazioni</th>
+              <th>Avversaria</th><th>Data</th><th>Orario</th><th>Campo</th><th>Casa</th><th>Ris.</th><th>Esito</th><th>Publ. Form.</th><th>Azioni</th><th>Extra</th><th>Prestazioni</th>
             </tr></thead>
             <tbody id="crud-partite-body"></tbody>
           </table>
