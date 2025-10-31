@@ -7,43 +7,6 @@
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   
-  <script>
-    /* ===== EFFETTO FADE NAVIGAZIONE (solo .content-section, fix visibilità completa) ===== */
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          const target = tab.getAttribute('data-target');
-          const current = document.querySelector('.content-section.active');
-          const next = document.getElementById(target);
-          if (!next || current === next) return;
-
-          if (current) {
-            current.style.opacity = '0';
-            current.style.pointerEvents = 'none';
-            setTimeout(() => {
-              current.classList.remove('active');
-              next.classList.add('active');
-              next.style.opacity = '0';
-              next.style.pointerEvents = 'all';
-              setTimeout(() => { next.style.opacity = '1'; }, 50);
-            }, 400);
-          } else {
-            next.classList.add('active');
-            next.style.opacity = '1';
-            next.style.pointerEvents = 'all';
-          }
-
-          // Aggiorna contenuto dinamico
-          if (target === 'classifica-section' && typeof loadClassifica === 'function') {
-            setTimeout(() => loadClassifica(), 600);
-          }
-        });
-      });
-      
-      const firstSection = document.querySelector('.content-section') || document.querySelector('section');
-      if (firstSection) firstSection.classList.add('active');
-    });
-  </script>
   <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css"/>
 
@@ -238,21 +201,7 @@
     footer{background:var(--ink-sub);color:#fff;padding:10px 16px;margin-top:22px;font-size:.8rem;text-align:center;border-top:4px solid var(--yellow)}
 
     @media (prefers-reduced-motion: reduce){.tab,.btn{transition:none}}
-  
-
-/* === Effetti di transizione per le sezioni visibili (.content-section) === */
-.content-section {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.5s ease;
-}
-.content-section.active {
-  opacity: 1;
-  pointer-events: all;
-}
-
-
-</style>
+  </style>
 
   <script type="module">
     /* Firebase v9 (modular) */
@@ -431,6 +380,9 @@
       });
       byId('video-tab')?.addEventListener('click', loadVideoList);
       byId('classifica-tab')?.addEventListener('click', window.loadClassifica);
+      
+      // Associa la funzione al pulsante di login
+      byId('auth-toggle-btn')?.addEventListener('click', handleAuthToggle);
     });
     
     
@@ -1007,7 +959,7 @@
           <li class="card">
             <div class="row" style="justify-content:space-between; align-items:flex-start;">
               <div>
-                <div class="player-title">${r.nome} <span class="pill">#${r.numero}</span></div>
+                <div class="player-title">${r.nome} ${r.cognome} <span class="pill">#${r.numero}</span></div>
                 <div class="player-sub">Partite con Voto: <b>${r.partite}</b></div>
                 ${bar}
               </div>
