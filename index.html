@@ -979,8 +979,11 @@
     /**
      * VISUALIZZA PRESTAZIONI PARTITA (Pubblica)
      * [MODIFICA 2: FILTRO CANDIDATURA]
+     * [CORREZIONE: Mostra la sezione]
      */
     window.showPrestazioniPubbliche = async (matchId, avv) => {
+      // CORREZIONE: Assicura che la sezione sia visibile
+      window.showPublicSection('prestazioni-partita-section'); 
       const content = byId('prestazioni-partita-content');
       if (!content) return;
       content.innerHTML = 'Caricamento prestazioni...';
@@ -1917,6 +1920,7 @@
     <button id="classifica-tab" class="tab" data-target="classifica-section" onclick="showPublicSection('classifica-section')">Classifica</button>
     <button id="statistiche-tab" class="tab" data-target="statistiche-section" onclick="showPublicSection('statistiche-section')">Statistiche & Voti</button>
     <button id="video-tab" class="tab" data-target="video-section" onclick="showPublicSection('video-section')">Video</button>
+    <a href="https://www.romatornei.it/calcio-a-8-over-40-roma-sud" target="_blank" class="tab" style="text-decoration:none;">Torneo</a>
     <button id="auth-toggle-btn" class="btn" onclick="handleAuthToggle()">Login</button>
   </div>
 </nav>
