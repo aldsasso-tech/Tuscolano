@@ -5,78 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AC Tuscolano | Gestione Squadra</title>
 
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js">
-/* ===== SCHEDULAZIONE: refresh giornaliero alle 23:00 ===== */
-function msUntilNext(hour, minute = 0, second = 0) {
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(hour, minute, second, 0);
-  if (next <= now) next.setDate(next.getDate() + 1);
-  return next - now;
-}
-window.scheduleDailyClassificaRefresh = () => {
-  const ms = msUntilNext(23, 0, 0);
-  const infoEl = document.getElementById('classifica-next-run');
-  if (infoEl) {
-    const when = new Date(Date.now() + ms).toLocaleString('it-IT');
-    infoEl.textContent = `Prossimo aggiornamento: ${when}`;
-  }
-  setTimeout(async function tick() {
-    await loadClassifica();
-    window.scheduleDailyClassificaRefresh();
-  }, ms);
-};
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+  <script>
+    /* ===== EFFETTO FADE NAVIGAZIONE (solo .content-section, fix visibilità completa) ===== */
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const target = tab.getAttribute('data-target');
+          const current = document.querySelector('.content-section.active');
+          const next = document.getElementById(target);
+          if (!next || current === next) return;
 
+          if (current) {
+            current.style.opacity = '0';
+            current.style.pointerEvents = 'none';
+            setTimeout(() => {
+              current.classList.remove('active');
+              next.classList.add('active');
+              next.style.opacity = '0';
+              next.style.pointerEvents = 'all';
+              setTimeout(() => { next.style.opacity = '1'; }, 50);
+            }, 400);
+          } else {
+            next.classList.add('active');
+            next.style.opacity = '1';
+            next.style.pointerEvents = 'all';
+          }
 
-/* ===== EFFETTO FADE NAVIGAZIONE (solo .content-section, fix visibilità completa) ===== */
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const target = tab.getAttribute('data-target');
-    const current = document.querySelector('.content-section.active');
-    const next = document.getElementById(target);
-    if (!next || current === next) return;
-
-    if (current) {
-      current.style.opacity = '0';
-      current.style.pointerEvents = 'none';
-      setTimeout(() => {
-        current.classList.remove('active');
-        next.classList.add('active');
-        next.style.opacity = '0';
-        next.style.pointerEvents = 'all';
-        setTimeout(() => { next.style.opacity = '1'; }, 50);
-      }, 400);
-    } else {
-      next.classList.add('active');
-      next.style.opacity = '1';
-      next.style.pointerEvents = 'all';
-    }
-
-    // Aggiorna contenuto dinamico
-    if (target === 'classifica-section' && typeof loadClassifica === 'function') {
-      setTimeout(() => loadClassifica(), 600);
-    }
-  });
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-  const firstSection = document.querySelector('.content-section') || document.querySelector('section');
-  if (firstSection) firstSection.classList.add('active');
-  if (typeof window.scheduleDailyClassificaRefresh === 'function') {
-    window.scheduleDailyClassificaRefresh();
-  }
-});
-);
-
-document.addEventListener('DOMContentLoaded', () => {
-  const firstSection = document.querySelector('section');
-  if (firstSection) firstSection.classList.add('active');
-  if (typeof window.scheduleDailyClassificaRefresh === 'function') {
-    window.scheduleDailyClassificaRefresh();
-  }
-});
-
-</script>
+          // Aggiorna contenuto dinamico
+          if (target === 'classifica-section' && typeof loadClassifica === 'function') {
+            setTimeout(() => loadClassifica(), 600);
+          }
+        });
+      });
+      
+      const firstSection = document.querySelector('.content-section') || document.querySelector('section');
+      if (firstSection) firstSection.classList.add('active');
+    });
+  </script>
   <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css"/>
 
@@ -287,8 +254,8 @@ document.addEventListener('DOMContentLoaded', () => {
       'admin-inserimento-giornate-section',
       'admin-calendario-section',
       'admin-formazione-section',
-      'admin-statistiche-section',
-      'admin-prestazioni-partita-section', // NUOVA SEZIONE ADMIN
+      'admin-statistiche-section', // Mantenuta per il form "Risultato"
+      'admin-prestazioni-partita-section',
       'admin-candidature-section',
       'admin-gestione-dati-section',
       'admin-utenti-section',
@@ -328,9 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(id==='admin-gestione-dati-section'){ window.loadCrudGiocatori(); window.loadCrudPartite(); }
         if (id === 'admin-video-section') loadPartitePerVideoAdmin(); 
         
-        // Non ricarico 'admin-prestazioni-partita-section' qui, 
-        // viene caricata da 'showValutazionePartitaForm'
-
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -408,10 +372,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Default: Carico le sezioni pubbliche e mostro la rosa
       window.showPublicSection('rosa-section');
       loadRosa(); 
-      window.loadProssimeGiornate(false); // **CORRETTO**
+      window.loadProssimeGiornate(false); // Carica calendario
       loadStatistiche(); // Carica solo risultati
       window.loadPrestazioniAggregato(); // Carica aggregato giocatori
-      window.loadClassifica(); // **CORRETTO**
+      window.loadClassifica(); // Carica classifica da cache
       
       // Associazione evento per salvare il link video
       byId('save-video-btn')?.addEventListener('click', saveVideoLink);
@@ -419,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // Associo gli eventi di navigazione pubblici per ricaricare i dati all'apertura
       byId('rosa-tab')?.addEventListener('click', loadRosa);
       byId('calendario-tab')?.addEventListener('click', () => window.loadProssimeGiornate(false));
-      // Listener aggiornato per caricare risultati E aggregato
       byId('statistiche-tab')?.addEventListener('click', () => {
           loadStatistiche(); 
           window.loadPrestazioniAggregato();
@@ -428,37 +391,39 @@ document.addEventListener('DOMContentLoaded', () => {
       byId('classifica-tab')?.addEventListener('click', window.loadClassifica);
     });
     
-   /* ===== FUNZIONE CLASSIFICA SPOSTATA QUI ===== */
+    
+    /**
+     * NUOVA Funzione Classifica:
+     * Legge SOLO dalla cache di Firebase.
+     */
     window.loadClassifica = async () => {
-      const classificaContent = document.getElementById('classifica-content');
+      const classificaContent = byId('classifica-content');
       if (!classificaContent) return;
-      classificaContent.innerHTML = `<div class="help">Caricamento classifica in corso...</div>`;
+      classificaContent.innerHTML = `<div class="help">Caricamento classifica...</div>`;
       try {
-        const now = new Date();
-        const todayKey = now.toISOString().split('T')[0];
         const snap = await get(ref(db, 'classifica_cache'));
-        const cache = snap.val() || {};
-        const cachedHtml = cache.html;
-        const cachedDate = cache.date;
-
-        // Se abbiamo cache odierna: usa e basta
-        if (cachedHtml && cachedDate === todayKey) {
-          classificaContent.innerHTML = cachedHtml;
-          return;
+        const cache = (snap.exists() && snap.val()) ? snap.val() : {};
+        if (cache.html) {
+          classificaContent.innerHTML = cache.html;
+        } else {
+          classificaContent.innerHTML = `<div class="help">Classifica non ancora disponibile. L'amministratore deve aggiornarla.</div>`;
         }
+      } catch (e) {
+        console.error("Errore caricamento classifica:", e);
+        classificaContent.innerHTML = `<div class="help" style="color:red">Errore caricamento classifica.</div>`;
+      }
+    };
 
-        // Se non admin: mostra cache se esiste
-        if (!window.isAdmin) {
-          if (cachedHtml) {
-            classificaContent.innerHTML = cachedHtml;
-            return;
-          } else {
-            classificaContent.innerHTML = `<div class="help" style="color:red">La classifica non è ancora disponibile. L'amministratore provvederà all'aggiornamento.</div>`;
-            return;
-          }
-        }
+    /**
+     * NUOVA Funzione Admin:
+     * Aggiorna la classifica dal sito e la salva su Firebase.
+     */
+    window.updateClassificaFromSito = async () => {
+      if (!isAdmin) return alert('Accesso negato. Solo gli amministratori possono aggiornare la classifica.');
+      
+      alert('Aggiornamento classifica in corso... Attendere prego.');
 
-        // Admin: fetch da romatornei
+      try {
         const url = "https://www.romatornei.it/calcio-a-8-over-40-roma-sud/";
         const proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(url) + "&cacheBust=" + Date.now();
         const response = await fetch(proxy);
@@ -469,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const remoteTable = doc.querySelector(".table-responsive table, table.table, table");
         if (!remoteTable) {
-          classificaContent.innerHTML = `<div class="help">Impossibile trovare la classifica sul sito remoto.</div>`;
+          alert('Errore: Impossibile trovare la tabella della classifica sul sito remoto.');
           return;
         }
 
@@ -511,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
 
         const normalizedHTML = `
-          <div class="help">Classifica aggiornata automaticamente da <a href="${url}" target="_blank" rel="noopener">romatornei.it</a></div>
+          <div class="help">Classifica aggiornata manualmente da <a href="${url}" target="_blank" rel="noopener">romatornei.it</a></div>
           <div style="overflow-x:auto">
             <table class="table" style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px">
               ${theadHTML}
@@ -519,28 +484,21 @@ document.addEventListener('DOMContentLoaded', () => {
             </table>
           </div>
           <div class="help" style="margin-top:8px;">Ultimo aggiornamento: ${new Date().toLocaleString("it-IT")}</div>
-          <div id="classifica-next-run" class="help" style="margin-top:4px;"></div>
         `;
-
-        classificaContent.innerHTML = normalizedHTML;
 
         // Salva cache
         await set(ref(db, 'classifica_cache'), {
           html: normalizedHTML,
-          date: todayKey,
           timestamp: Date.now()
         });
+
+        // Aggiorna la vista
+        await window.loadClassifica();
+        alert('Classifica aggiornata con successo!');
+
       } catch (e) {
-        console.error(e);
-        try {
-          const snap2 = await get(ref(db, 'classifica_cache'));
-          const cache2 = snap2.val() || {};
-          if (cache2.html) {
-            classificaContent.innerHTML = cache2.html;
-            return;
-          }
-        } catch(_) {}
-        classificaContent.innerHTML = `<div class="help" style="color:red">Errore nel recupero della classifica.</div>`;
+        console.error('Errore aggiornamento classifica:', e);
+        alert('Errore durante l\'aggiornamento della classifica: ' + e.message);
       }
     };
 
@@ -730,7 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * FUNZIONE CORRETTA: loadProssimeGiornate
+     * FUNZIONE CORRETTA: loadProssimeGiornate (SPOSTATA QUI)
      * Include il pulsante "Prestazioni" (pubblico) e RIMUOVE "Valuta" (admin)
      * Layout pulsanti pubblici corretto (singola riga)
      */
@@ -808,13 +766,13 @@ document.addEventListener('DOMContentLoaded', () => {
       window.loadProssimeGiornate(false);
     };
 
-    /** * MODIFICATA: Carica solo i risultati della squadra.
-     * L'elenco giocatori è gestito da 'loadPrestazioniAggregato'.
+    /**
+     * FUNZIONE loadStatistiche (SPOSTATA QUI)
+     * Carica solo i risultati della squadra.
      */
     async function loadStatistiche(){
       const rl = byId('statistiche-risultati-list'); if(rl){ rl.innerHTML=''; }
-      // 'gl' (statistiche-voti-list) rimosso, gestito da loadPrestazioniAggregato
-
+      
       const snapCal = await get(ref(db,'calendario')); const cal = snapCal.val()||{};
       const rows = Object.entries(cal);
       if(rl){
@@ -825,12 +783,10 @@ document.addEventListener('DOMContentLoaded', () => {
           rl.appendChild(li);
         });
       }
-      
-      // Rimossa la parte di caricamento giocatori da /rosa
     }
     
     /**
-     * FUNZIONE PRESTAZIONI AGGREGATE SPOSTATA QUI E CORRETTA
+     * FUNZIONE PRESTAZIONI AGGREGATE (SPOSTATA QUI E CORRETTA)
      */
     window.loadPrestazioniAggregato = async () => {
       // Sezione "Prestazioni" -> div contenitore
@@ -1726,32 +1682,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // Admin: valutazioni (incrementi) - Deprecato ma lasciato per compatibilità
-    window.showValutazioneForm = async ()=>{
-      window.showAdminSection('admin-statistiche-section'); const box = byId('admin-statistiche-form'); box.innerHTML='';
-      const snap = await get(ref(db,'rosa')); const val = snap.val()||{};
-      const options = Object.entries(val).map(([id,g])=>`<option value="${id}">${g.nome} ${g.cognome} (#${g.numero})</option>`).join('');
-      box.innerHTML = `
-        <h3>Valutazione singolo giocatore (Incremento Manuale)</h3>
-        <div class="help" style="color:var(--red)"><b>Attenzione:</b> Questa sezione è deprecata. Usa <b>Gest. Dati &rarr; Partite &rarr; Valuta...</b> per inserire voti e goal per partita.</div>
-        <form onsubmit="savePlayerStats(event)">
-          <label>Giocatore</label>
-          <select id="stat-player" required><option value="">Seleziona</option>${options}</select>
-          <label>Presenze (incremento)</label>
-          <input id="stat-presenze" type="number" step="1" value="0">
-          <div class="actions"><button class="btn btn--admin" type="submit">Salva Presenze</button><button class="btn" type="button" onclick="showAdminSection('admin-calendario-section')">Torna alle partite</button></div>
-        </form>`;
-    };
-    window.savePlayerStats = async (e)=>{
-      e.preventDefault(); if(!isAdmin) return; const id = v('stat-player'); if(!id) return;
-      const presInc = +v('stat-presenze')||0;
-      const snap = await get(ref(db,'rosa/'+id)); const g = snap.val(); if(!g) return alert('Giocatore non trovato');
-      const upd = { presenze:(g.presenze||0)+presInc }; // Aggiorna solo presenze
-      await update(ref(db,'rosa/'+id),upd);
-      alert('Statistiche aggiornate');
-      window.showValutazioneForm();
-      loadStatistiche();
-    };
   </script>
 </head>
 <body>
@@ -1784,9 +1714,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <button class="tab" data-admin-target="admin-formazione-section" onclick="showAdminSection('admin-formazione-section')">Formazione & sostit.</button>
         <button class="tab" data-admin-target="admin-candidature-section" onclick="showAdminSection('admin-candidature-section')">Gest. Candidature</button>
         <button class="tab" data-admin-target="admin-gestione-dati-section" onclick="showAdminSection('admin-gestione-dati-section')">Gest. dati</button>
-        <button class="tab" data-admin-target="admin-statistiche-section" onclick="showAdminSection('admin-statistiche-section')">Statistiche (Man.)</button>
         <button class="tab" data-admin-target="admin-video-section" onclick="showAdminSection('admin-video-section')">Ins. Video</button>
         <button class="tab" data-admin-target="admin-utenti-section" onclick="showAdminSection('admin-utenti-section')">Ins. utenti</button>
+        <button class="tab" onclick="window.updateClassificaFromSito()">Agg.Classifica</button>
       </div>
     </div>
   </nav>
@@ -1831,7 +1761,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       <div id="prestazioni-aggregate-content">
           <h3>Riepilogo Giocatori</h3>
-          <ul id="statistiche-voti-list" class="grid cols-2"></ul>
+          <div class="help">Calcolo media voti e goal in corso…</div>
       </div>
     </section>
     
@@ -1924,13 +1854,10 @@ document.addEventListener('DOMContentLoaded', () => {
     </section>
 
     <section id="admin-statistiche-section" style="display:none">
-      <h2>Admin · Statistiche (Gestione Manuale)</h2>
-      <div id="admin-statistiche-form"></div>
-      <div class="actions" style="margin-top:10px">
-        <button class="btn" onclick="showAdminSection('admin-calendario-section')">Gestisci risultati</button>
-        <button class="btn btn--admin" onclick="showValutazioneForm()">Incremento Manuale (Deprecato)</button>
-      </div>
-    </section>
+      <h2>Admin · Statistiche</h2>
+      <div id="admin-statistiche-form">
+        </div>
+      </section>
 
     <section id="admin-candidature-section" style="display:none">
       <h2>Admin · Gestione Candidature (Compact)</h2>
