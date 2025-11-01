@@ -1901,60 +1901,7 @@
     };
     </script>
 </head>
-<body>
-<style>
-body {
-    margin: 0;
-    font-family: "Roboto", sans-serif;
-}
-.menu-toggle {
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 1000;
-    background-color: #333;
-    color: white;
-    border: none;
-    font-size: 24px;
-    padding: 10px;
-    cursor: pointer;
-    border-radius: 5px;
-}
-.menu {
-    position: fixed;
-    top: 0;
-    left: -250px;
-    width: 250px;
-    height: 100%;
-    background-color: #222;
-    color: white;
-    padding-top: 60px;
-    transition: left 0.3s ease;
-    z-index: 999;
-}
-.menu a {
-    display: block;
-    padding: 15px 20px;
-    color: white;
-    text-decoration: none;
-    border-bottom: 1px solid #444;
-}
-.menu a:hover {
-    background-color: #444;
-}
-.menu.active {
-    left: 0;
-}
-</style>
-<button class="menu-toggle" onclick="toggleMenu()">☰</button>
-<div class="menu" id="hamburgerMenu">
-<a href="#rosa">La nostra Rosa</a>
-<a href="#calendario">Calendario &amp; Partite</a>
-<a href="#classifica">Classifica</a>
-<a href="#statistiche">Statistiche &amp; Voti</a>
-<a href="#video">Video</a>
-<a href="#torneo">Torneo</a>
-</div>
+<body><div id="menu-toggle" style="position:fixed;top:10px;left:10px;z-index:1000;cursor:pointer;font-size:24px;">☰</div><div id="menu-container" style="display:none;position:fixed;top:50px;left:10px;background:#fff;border:1px solid #ccc;padding:10px;z-index:999;"><a href="#rosa" style="display:block;margin:5px 0;text-decoration:none;color:#333;">La nostra Rosa</a><a href="#calendario" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Calendario &amp; Partite</a><a href="#classifica" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Classifica</a><a href="#statistiche" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Statistiche &amp; Voti</a><a href="#video" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Video</a><a href="#torneo" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Torneo</a></div>
 <header>
 <div class="hero" role="banner">
 <img alt="Logo AC Tuscolano" src="Logo.png"/>
@@ -1965,7 +1912,7 @@ body {
 </div>
 </header>
 <nav aria-label="Navigazione principale">
-
+<div class="nav-wrap"></div>
 </nav>
 <div id="admin-menu" style="display:none">
 <div class="nav-wrap">
@@ -2188,21 +2135,25 @@ body {
 <footer>
   AC Tuscolano | Gestione Squadra
 </footer>
+<section id="rosa">Sezione: rosa</section><section id="calendario">Sezione: calendario</section><section id="classifica">Sezione: classifica</section><section id="statistiche">Sezione: statistiche</section><section id="video">Sezione: video</section><section id="torneo">Sezione: torneo</section><script>
+document.getElementById("menu-toggle").onclick = function() {
+    var menu = document.getElementById("menu-container");
+    menu.style.display = (menu.style.display === "none") ? "block" : "none";
+};
 
-<script>
-function toggleMenu() {
-    var menu = document.getElementById("hamburgerMenu");
-    menu.classList.toggle("active");
-}
-document.querySelectorAll('.menu a').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
+document.querySelectorAll("#menu-container a").forEach(function(link) {
+    link.addEventListener("click", function(e) {
         e.preventDefault();
-        document.querySelector(this.getAttribute('href')).scrollIntoView({
-            behavior: 'smooth'
-        });
-        document.getElementById("hamburgerMenu").classList.remove("active");
+        var targetId = this.getAttribute("href").substring(1);
+        var target = document.getElementById(targetId);
+        if (target) {
+            window.scrollTo({
+                top: target.offsetTop,
+                behavior: "smooth"
+            });
+        }
+        document.getElementById("menu-container").style.display = "none";
     });
 });
-</script>
-</body>
+</script></body>
 </html>
