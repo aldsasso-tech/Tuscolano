@@ -852,13 +852,18 @@
     }
 
     /**
-     * FUNZIONE loadProssimeGiornate (SPOSTATA QUI)
+     * FUNZIONE loadProssimeGiornate (AGGIORNATA PER LISTA CANDIDATI)
      */
     window.loadProssimeGiornate = async function(asAdmin){
       const listId = asAdmin ? 'admin-calendario-list' : 'calendario-list';
       const ul = byId(listId); if(!ul) return; ul.innerHTML='';
-      const snap = await get(ref(db,'calendario'));
-      const val = snap.val() || {};
+      const [snapCalendar, snapRosa] = await Promise.all([
+          get(ref(db,'calendario')),
+          get(ref(db, 'rosa')) // Fetch player data for candidate list
+      ]);
+      const val = snapCalendar.val() || {};
+      const rosa = snapRosa.val() || {}; 
+      
       let entries = Object.entries(val);
       const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
       const today = new Date(); today.setHours(0,0,0,0);
@@ -873,24 +878,63 @@
         const matchDate = toDate(m.data);
         const isPast = matchDate < today;
 
-        // Candidatura
+        // Check for valid result (determines if match is "concluded")
+        const risultatoValido = (m.risultato && m.risultato !== 'N/D');
+
+        // Candidatura Button: only active if no result is entered AND not expired
         let candButton = '';
-        if (isPast) {
-          candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura scaduta</button>`;
+        if (risultatoValido) {
+           candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura terminata</button>`;
+        } else if (isPast) {
+           candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura scaduta</button>`;
         } else {
-          // Utilizza la funzione placeholder candidati, che è OK per la sezione pubblica
           candButton = `<button class="btn btn--accent" onclick="candidati('${matchId}')">Candidatura</button>`; 
         }
 
-        // Prestazioni: sempre mostrato. Attivo solo se partita passata con risultato valido.
+        // Prestazioni Button: active only if result is valid
         let prestazioniBtn = '';
-        const risultatoValido = (m.risultato && m.risultato !== 'N/D');
-        if (isPast && risultatoValido) {
-          // CHIAMATA CORRETTA: showPrestazioniPubbliche
+        if (risultatoValido) {
           prestazioniBtn = `<button class="btn" onclick="window.showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
         } else {
           prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
         }
+
+        // *** LOGICA PER LISTA CANDIDATI PUBBLICA ***
+        let candidatiListHtml = '';
+        if (!asAdmin && !risultatoValido) { // Se è sezione pubblica e NON c'è risultato
+            if (candCount > 0) {
+                let playersHtml = '';
+                
+                const candidatiIds = Object.keys(cand).filter(pid => cand[pid] === true);
+                
+                // Sort players by number (good practice)
+                const sortedCandidati = candidatiIds.map(pid => rosa[pid] ? { ...rosa[pid], id: pid } : null)
+                    .filter(p => p !== null)
+                    .sort((a, b) => (a.numero || 0) - (b.numero || 0));
+
+                playersHtml = sortedCandidati.map(p => {
+                    // Stile pillola per lo stato (Titolare/Riserva)
+                    const statusPill = `<span class="pill" style="margin-left:5px; font-size:.7rem; background:#ccc; color:#333; padding:2px 6px;">${escapeHtml(p.stato)}</span>`;
+                    const ruoloDisplay = p.ruolo ? `(${escapeHtml(p.ruolo)})` : '';
+                    return `
+                        <div style="font-size:0.9rem; line-height:1.2; margin-top:4px;">
+                            ${escapeHtml(p.nome)} <b>${escapeHtml(p.cognome)}</b> ${ruoloDisplay}
+                            ${statusPill}
+                        </div>
+                    `;
+                }).join('');
+                
+                candidatiListHtml = `
+                    <div style="margin-top:8px; border-top:1px solid var(--line); padding-top:8px;">
+                        <div style="font-weight:700; color:#0e7a0d; margin-bottom: 4px;">Disponibilità Confermate (${candCount}):</div>
+                        ${playersHtml}
+                    </div>
+                `;
+            } else {
+                candidatiListHtml = `<div class="pill" style="margin-top:8px; font-size:0.85rem;">Nessuna disponibilità confermata.</div>`;
+            }
+        }
+        // *** FINE LOGICA PER LISTA CANDIDATI PUBBLICA ***
 
         // NUOVA LOGICA: Calcolo Esito per display in Calendario
         let esitoPill = '';
@@ -930,7 +974,7 @@
                 ${m.data} ${m.orario ? `• ${m.orario}` : ''}<br>
                 Campo: ${escapeHtml(m.campo)} • ${m.casa ? 'Casa' : 'Trasferta'}
               </div>
-              ${!isPast && candCount > 0 && !asAdmin ? `<div class="pill" style="margin-top:4px;">${candCount} disponibilità</div>` : ''}
+              ${candidatiListHtml} 
             </div>
             <div class="actions" style="margin:0; flex:0 0 auto; display:flex; flex-direction:column; gap:6px;">
               ${asAdmin ? `
@@ -939,13 +983,11 @@
                 <button class="btn btn--admin" onclick="showCandidatureEditor('${matchId}','${escapeHtml(m.avversaria)}')">Candidature (${candCount})</button>
                 ${risultatoValido ? `<button class="btn btn--admin" onclick="showValutazionePartitaForm('${matchId}','${escapeHtml(m.avversaria)}')">Valuta Prestazioni</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Valuta Prestazioni</button>`}
                 <button class="btn" onclick="crudDeletePartita('${matchId}')">Elimina Partita</button>
-              ` : (isPast ? `
-                ${risultatoValido && isPublished ? `<button class="btn" onclick="window.showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione</button>` : ''}
-                ${prestazioniBtn}
               ` : `
                 ${candButton}
-                ${isPublished ? `<button class="btn" onclick="window.showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione Pubblica</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Formazione</button>`}
-              `)}
+                ${isPublished && !risultatoValido ? `<button class="btn" onclick="window.showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione Pubblica</button>` : (isPublished && risultatoValido ? `<button class="btn" onclick="window.showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Formazione</button>`)}
+                ${prestazioniBtn}
+              `}
             </div>
           </div>`;
         ul.appendChild(li);
