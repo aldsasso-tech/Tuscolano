@@ -947,6 +947,9 @@
     }
 
 
+    /**
+     * MODIFICA 1: Implementazione del layout a blocchi/griglia per i risultati
+     */
     async function loadStatistiche(){
       const ul = byId('statistiche-risultati-list'); if(!ul) return; ul.innerHTML='';
       const snap = await get(ref(db,'calendario'));
@@ -967,6 +970,8 @@
         
         let esitoPill = '<span class="pill" style="background:#ddd; color:#333; padding:2px 8px;">N/D</span>';
         const [scoreCasa, scoreOspite] = p.risultato.split('-').map(s => parseInt(s.trim()));
+        const avversario = p.avversaria ? escapeHtml(p.avversaria) : 'Avversario sconosciuto';
+        const campo = p.campo ? escapeHtml(p.campo) : 'Campo sconosciuto';
 
         if (!isNaN(scoreCasa) && !isNaN(scoreOspite)) {
             let esito = '';
@@ -989,22 +994,18 @@
                 esitoColor = 'background:var(--yellow); color:#111;'; // Yellow
                 draws++;
             }
-            esitoPill = `<span class="pill" style="${esitoColor} padding:2px 8px; font-size:.75rem">${esito}</span>`;
+            esitoPill = `<span class="pill" style="${esitoColor} padding:2px 8px; font-size:.75rem; margin-top:4px; display:inline-block;">${esito}</span>`;
         }
         
-        const dataOra = p.data && p.orario ? `${p.data} ${p.orario}` : 'Data/Ora sconosciuta';
-        const avversario = p.avversaria ? escapeHtml(p.avversaria) : 'Avversario sconosciuto';
-        const campo = p.campo ? escapeHtml(p.campo) : 'Campo sconosciuto';
-
         return `
-            <li class="card" style="margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; padding:10px 16px;">
-                <div style="flex: 0 0 100px;">${p.data || 'N/D'}</div>
-                <div style="flex-grow:1; min-width:120px;">
-                    <strong>vs ${avversario}</strong><br>
+            <li class="card" style="margin-bottom:10px; padding:12px; display:grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px;">
+                <div>
+                    <div style="font-size:0.9rem; color:var(--ink-sub); margin-bottom: 4px;">${p.data || 'N/D'} • ${p.casa ? 'Casa' : 'Trasferta'}</div>
+                    <strong style="font-size:1.1rem; display:block;">vs ${avversario}</strong>
                     <span class="player-sub">${campo}</span>
                 </div>
-                <div style="text-align:right; margin-left:10px;">
-                    <div style="font-weight:800; font-size:1.1rem">${p.risultato}</div>
+                <div style="text-align:right; flex-shrink:0;">
+                    <div style="font-weight:800; font-size:1.4rem; line-height:1.2;">${p.risultato}</div>
                     ${esitoPill}
                 </div>
             </li>
@@ -1032,94 +1033,103 @@
       ul.innerHTML = riepilogo + html;
     }
 
-    async function loadPrestazioniAggregato(){
+    /**
+     * MODIFICA 2: Aggiunto try/catch per mostrare i dati del Riepilogo Giocatori
+     */
+    window.loadPrestazioniAggregato = async function(){
       const cont = byId('prestazioni-aggregate-content');
       if(!cont) return;
       cont.querySelector('.help').textContent = 'Calcolo media voti e goal in corso...';
       
-      const [snapRosa, snapPrests] = await Promise.all([
-        get(ref(db, 'rosa')),
-        get(ref(db, 'prestazioni'))
-      ]);
-      const rosa = snapRosa.val() || {};
-      const prestazioniByMatch = snapPrests.val() || {};
-      
-      // 1. Aggrega dati
-      const aggregato = {};
-      Object.keys(rosa).forEach(pid => {
-        aggregato[pid] = { totalVoto: 0, countVoto: 0, goal: 0, presenze: rosa[pid].presenze || 0 };
-      });
-
-      Object.values(prestazioniByMatch).forEach(matchPrests => {
-        Object.entries(matchPrests).forEach(([pid, data]) => {
-          if (aggregato[pid]) {
-            if (data.voto !== null && !Number.isNaN(data.voto)) {
-              aggregato[pid].totalVoto += data.voto;
-              aggregato[pid].countVoto += 1;
-            }
-            aggregato[pid].goal += data.goal || 0;
-          }
-        });
-      });
-
-      // 2. Calcola media e prepara righe
-      const rows = Object.entries(rosa).map(([pid, g]) => {
-        const a = aggregato[pid];
-        const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
-        return { pid, nome: `${g.nome} ${g.cognome}`, numero: g.numero, 
-                 partite: a.countVoto, 
-                 mediaVoto: media !== null ? Number(media.toFixed(2)) : null, goal: a.goal };
-      }).sort((a,b)=> {
-        // Ordina per media voto (decrescente), poi goal (decrescente)
-        const am = a.mediaVoto===null ? -1 : a.mediaVoto;
-        const bm = b.mediaVoto===null ? -1 : b.mediaVoto;
-        if (bm !== am) return bm - am;
-        if (b.goal !== a.goal) return b.goal - a.goal;
-        return a.nome.localeCompare(b.nome);
-      });
-
-      // 3. Genera HTML
-      const rowsHtml = rows.map(r => {
-        let mediaVotoDisplay = '—';
-        let bar = '';
-        if (r.mediaVoto !== null) {
-          const votoNum = r.mediaVoto;
-          mediaVotoDisplay = `<b>${votoNum.toFixed(2)}</b>`;
-          // Calcolo barra
-          const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100)));
-          const color = (votoNum >= 7 ? 'green' : (votoNum >= 6 ? 'yellow' : 'red'));
-          bar = `
-            <div class="voto-bar-container">
-              <div class="voto-bar ${color}" style="width:${perc}%;"></div>
-            </div>`;
-        }
+      try {
+        const [snapRosa, snapPrests] = await Promise.all([
+          get(ref(db, 'rosa')),
+          get(ref(db, 'prestazioni'))
+        ]);
+        const rosa = snapRosa.val() || {};
+        const prestazioniByMatch = snapPrests.val() || {};
         
-        return `
-          <li class="card">
-            <div class="row" style="justify-content:space-between; align-items:flex-start;">
-              <div>
-                <div class="player-title">${r.nome} <span class="pill">#${r.numero}</span></div>
-                <div class="player-sub">Partite con voto: <b>${r.partite}</b></div>
-                <div class="player-sub">Presenze totali: <b>${r.presenze}</b></div>
+        // 1. Aggrega dati
+        const aggregato = {};
+        Object.keys(rosa).forEach(pid => {
+          aggregato[pid] = { totalVoto: 0, countVoto: 0, goal: 0, presenze: rosa[pid].presenze || 0 };
+        });
+
+        Object.values(prestazioniByMatch).forEach(matchPrests => {
+          Object.entries(matchPrests).forEach(([pid, data]) => {
+            if (aggregato[pid]) {
+              if (data.voto !== null && !Number.isNaN(data.voto)) {
+                aggregato[pid].totalVoto += data.voto;
+                aggregato[pid].countVoto += 1;
+              }
+              aggregato[pid].goal += data.goal || 0;
+            }
+          });
+        });
+
+        // 2. Calcola media e prepara righe
+        const rows = Object.entries(rosa).map(([pid, g]) => {
+          const a = aggregato[pid];
+          const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
+          return { pid, nome: `${g.nome} ${g.cognome}`, numero: g.numero, 
+                   partite: a.countVoto, 
+                   mediaVoto: media !== null ? Number(media.toFixed(2)) : null, goal: a.goal };
+        }).sort((a,b)=> {
+          // Ordina per media voto (decrescente), poi goal (decrescente)
+          const am = a.mediaVoto===null ? -1 : a.mediaVoto;
+          const bm = b.mediaVoto===null ? -1 : b.mediaVoto;
+          if (bm !== am) return bm - am;
+          if (b.goal !== a.goal) return b.goal - a.goal;
+          return a.nome.localeCompare(b.nome);
+        });
+
+        // 3. Genera HTML
+        const rowsHtml = rows.map(r => {
+          let mediaVotoDisplay = '—';
+          let bar = '';
+          if (r.mediaVoto !== null) {
+            const votoNum = r.mediaVoto;
+            mediaVotoDisplay = `<b>${votoNum.toFixed(2)}</b>`;
+            // Calcolo barra
+            const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100)));
+            const color = (votoNum >= 7 ? 'green' : (votoNum >= 6 ? 'yellow' : 'red'));
+            bar = `
+              <div class="voto-bar-container">
+                <div class="voto-bar ${color}" style="width:${perc}%;"></div>
+              </div>`;
+          }
+          
+          return `
+            <li class="card">
+              <div class="row" style="justify-content:space-between; align-items:flex-start;">
+                <div>
+                  <div class="player-title">${r.nome} <span class="pill">#${r.numero}</span></div>
+                  <div class="player-sub">Partite con voto: <b>${r.partite}</b></div>
+                  <div class="player-sub">Presenze totali: <b>${r.presenze}</b></div>
+                </div>
+                <div style="text-align:right;">
+                  <div class="player-title">Voto Medio: ${mediaVotoDisplay}</div>
+                  ${bar}
+                  <div class="player-sub" style="margin-top:6px;">Goal: <b>${r.goal}</b></div>
+                </div>
               </div>
-              <div style="text-align:right;">
-                <div class="player-title">Voto Medio: ${mediaVotoDisplay}</div>
-                ${bar}
-                <div class="player-sub" style="margin-top:6px;">Goal: <b>${r.goal}</b></div>
-              </div>
-            </div>
-          </li>
+            </li>
+          `;
+        }).join('');
+        
+        cont.innerHTML = `
+          <h3>Riepilogo Giocatori</h3>
+          <ul class="grid cols-2" style="margin-top:14px;">
+            ${rowsHtml}
+          </ul>
+          <div class="help" style="margin-top:10px;">Solo le partite con voto inserito contribuiscono al calcolo della media.</div>
         `;
-      }).join('');
-      
-      cont.innerHTML = `
-        <h3>Riepilogo Giocatori</h3>
-        <ul class="grid cols-2" style="margin-top:14px;">
-          ${rowsHtml}
-        </ul>
-        <div class="help" style="margin-top:10px;">Solo le partite con voto inserito contribuiscono al calcolo della media.</div>
-      `;
+      } catch (e) {
+        console.error("Errore caricamento prestazioni aggregate:", e);
+        cont.innerHTML = `<h3>Riepilogo Giocatori</h3><div class="help" style="color:red">Errore durante il caricamento dei dati. Controlla la console per i dettagli.</div>`;
+      }
     }
+
 
     async function showFormazionePubblica(matchId, avv){
       window.showPublicSection('formazione-pubblica-section');
