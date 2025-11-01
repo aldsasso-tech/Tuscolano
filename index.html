@@ -891,11 +891,61 @@ nav{ display:none !important; } /* evitiamo spazio giallo inutilizzato su mobile
      * 2. Inserisce l'esito.
      * 3. Layout più allineato.
      */
-    async function loadStatistiche(){
-      const rl = byId('statistiche-risultati-list');
-      if(rl){ rl.innerHTML=''; }
+    
+async function loadStatistiche(){
+  const rl = byId('statistiche-risultati-list');
+  if(rl){ rl.innerHTML=''; rl.className=''; } 
 
-      const snapCal = await get(ref(db,'calendario'));
+  const snapCal = await get(ref(db,'calendario'));
+  const cal = snapCal.val()||{};
+  const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
+
+  const rows = Object.entries(cal).sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
+
+  if(!rows.length){ if(rl) rl.innerHTML = '<div class="help">Ancora nessun risultato.</div>'; return; }
+
+  // Render as clean cards (no table header)
+  rows.forEach(([matchId, p])=>{
+    if(!p.risultato || p.risultato==='N/D' || !String(p.risultato).includes('-')) return;
+
+    // Calcolo Esito
+    let esitoPill = '<span class="pill" style="background:var(--ink-sub); color:#fff; padding:2px 8px;">N/D</span>';
+    const parts = String(p.risultato).split('-');
+    const scoreCasa = parseInt(parts[0]?.trim(),10);
+    const scoreOspite = parseInt(parts[1]?.trim(),10);
+    if(!Number.isNaN(scoreCasa) && !Number.isNaN(scoreOspite)){
+      let esito='', esitoColor='';
+      const scoreTuscolano = p.casa ? scoreCasa : scoreOspite;
+      const scoreAvversaria = p.casa ? scoreOspite : scoreCasa;
+      if (scoreTuscolano > scoreAvversaria){ esito='VITTORIA'; esitoColor='background:#0e7a0d; color:#fff;'; }
+      else if (scoreTuscolano < scoreAvversaria){ esito='SCONFITTA'; esitoColor='background:var(--red); color:#fff;'; }
+      else { esito='PAREGGIO'; esitoColor='background:var(--yellow); color:#111;'; }
+      esitoPill = `<span class="pill" style="${esitoColor} padding:2px 8px; font-size:.75rem">${esito}</span>`;
+    }
+
+    const li = document.createElement('li');
+    li.className = 'card';
+    li.style.marginBottom = '8px';
+    li.innerHTML = `
+      <div class="row" style="justify-content:space-between; align-items:center; width:100%;">
+        <div>
+          <div class="player-title">vs ${escapeHtml(p.avversaria||'')}</div>
+          <div class="player-sub">${p.data||'N/D'}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="player-title"><b>${p.risultato||'N/D'}</b></div>
+          <div>${esitoPill}</div>
+        </div>
+      </div>
+    `;
+    rl.appendChild(li);
+  });
+
+  if(!rl.children.length){
+    rl.innerHTML = '<div class="help">Nessuna partita con risultato valido.</div>';
+  }
+}
+const snapCal = await get(ref(db,'calendario'));
       const cal = snapCal.val()||{};
       const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
 
