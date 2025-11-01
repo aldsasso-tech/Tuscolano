@@ -1901,7 +1901,60 @@
     };
     </script>
 </head>
-<body><div class="hamburger-menu"><div class="menu-icon" onclick="toggleMenu()">☰</div><ul id="menu-list" style="display:none;"><li><a href="#rosa" onclick="scrollToSection(event, this)">La nostra Rosa</a></li><li><a href="#calendario" onclick="scrollToSection(event, this)">Calendario &amp; Partite</a></li><li><a href="#classifica" onclick="scrollToSection(event, this)">Classifica</a></li><li><a href="#statistiche" onclick="scrollToSection(event, this)">Statistiche &amp; Voti</a></li><li><a href="#video" onclick="scrollToSection(event, this)">Video</a></li><li><a href="#torneo" onclick="scrollToSection(event, this)">Torneo</a></li></ul></div>
+<body>
+<style>
+body {
+    margin: 0;
+    font-family: "Roboto", sans-serif;
+}
+.menu-toggle {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1000;
+    background-color: #333;
+    color: white;
+    border: none;
+    font-size: 24px;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+.menu {
+    position: fixed;
+    top: 0;
+    left: -250px;
+    width: 250px;
+    height: 100%;
+    background-color: #222;
+    color: white;
+    padding-top: 60px;
+    transition: left 0.3s ease;
+    z-index: 999;
+}
+.menu a {
+    display: block;
+    padding: 15px 20px;
+    color: white;
+    text-decoration: none;
+    border-bottom: 1px solid #444;
+}
+.menu a:hover {
+    background-color: #444;
+}
+.menu.active {
+    left: 0;
+}
+</style>
+<button class="menu-toggle" onclick="toggleMenu()">☰</button>
+<div class="menu" id="hamburgerMenu">
+<a href="#rosa">La nostra Rosa</a>
+<a href="#calendario">Calendario &amp; Partite</a>
+<a href="#classifica">Classifica</a>
+<a href="#statistiche">Statistiche &amp; Voti</a>
+<a href="#video">Video</a>
+<a href="#torneo">Torneo</a>
+</div>
 <header>
 <div class="hero" role="banner">
 <img alt="Logo AC Tuscolano" src="Logo.png"/>
@@ -2135,18 +2188,21 @@
 <footer>
   AC Tuscolano | Gestione Squadra
 </footer>
+
 <script>
 function toggleMenu() {
-    var menu = document.getElementById("menu-list");
-    menu.style.display = (menu.style.display === "none") ? "block" : "none";
+    var menu = document.getElementById("hamburgerMenu");
+    menu.classList.toggle("active");
 }
-function scrollToSection(event, element) {
-    event.preventDefault();
-    var targetId = element.getAttribute("href").substring(1);
-    var targetElement = document.getElementById(targetId);
-    if (targetElement) {
-        targetElement.scrollIntoView({ behavior: 'smooth' });
-    }
-}
-</script></body>
+document.querySelectorAll('.menu a').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+            behavior: 'smooth'
+        });
+        document.getElementById("hamburgerMenu").classList.remove("active");
+    });
+});
+</script>
+</body>
 </html>
