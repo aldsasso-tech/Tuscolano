@@ -1901,8 +1901,65 @@
     };
     </script>
 </head>
-<body><div id="menu-toggle" style="position:fixed;top:10px;left:10px;z-index:1000;cursor:pointer;font-size:24px;">☰</div><div id="menu-container" style="display:none;position:fixed;top:50px;left:10px;background:#fff;border:1px solid #ccc;padding:10px;z-index:999;"><a href="#rosa" style="display:block;margin:5px 0;text-decoration:none;color:#333;">La nostra Rosa</a><a href="#calendario" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Calendario &amp; Partite</a><a href="#classifica" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Classifica</a><a href="#statistiche" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Statistiche &amp; Voti</a><a href="#video" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Video</a><a href="#torneo" style="display:block;margin:5px 0;text-decoration:none;color:#333;">Torneo</a></div>
+<body>
 <header>
+<style>
+/* Hamburger menu styles */
+.menu-toggle {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1001;
+}
+.menu-toggle span {
+    height: 3px;
+    width: 25px;
+    background: black;
+    margin: 4px 0;
+}
+.menu {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 50px;
+    left: 10px;
+    background: white;
+    border: 1px solid #ccc;
+    z-index: 1000;
+}
+.menu a {
+    padding: 10px;
+    text-decoration: none;
+    color: black;
+    border-bottom: 1px solid #ccc;
+}
+@media (max-width: 768px) {
+    .menu-toggle {
+        display: flex;
+    }
+}
+</style>
+<div class="menu-toggle" onclick="toggleMenu()">
+<span></span>
+<span></span>
+<span></span>
+</div>
+<div class="menu" id="hamburgerMenu">
+</div>
+<script>
+function toggleMenu() {
+    var menu = document.getElementById("hamburgerMenu");
+    if (menu.style.display === "flex") {
+        menu.style.display = "none";
+    } else {
+        menu.style.display = "flex";
+    }
+}
+</script>
+
 <div class="hero" role="banner">
 <img alt="Logo AC Tuscolano" src="Logo.png"/>
 <div class="brand">
@@ -1912,7 +1969,7 @@
 </div>
 </header>
 <nav aria-label="Navigazione principale">
-<div class="nav-wrap"></div>
+
 </nav>
 <div id="admin-menu" style="display:none">
 <div class="nav-wrap">
@@ -2135,25 +2192,5 @@
 <footer>
   AC Tuscolano | Gestione Squadra
 </footer>
-<section id="rosa">Sezione: rosa</section><section id="calendario">Sezione: calendario</section><section id="classifica">Sezione: classifica</section><section id="statistiche">Sezione: statistiche</section><section id="video">Sezione: video</section><section id="torneo">Sezione: torneo</section><script>
-document.getElementById("menu-toggle").onclick = function() {
-    var menu = document.getElementById("menu-container");
-    menu.style.display = (menu.style.display === "none") ? "block" : "none";
-};
-
-document.querySelectorAll("#menu-container a").forEach(function(link) {
-    link.addEventListener("click", function(e) {
-        e.preventDefault();
-        var targetId = this.getAttribute("href").substring(1);
-        var target = document.getElementById(targetId);
-        if (target) {
-            window.scrollTo({
-                top: target.offsetTop,
-                behavior: "smooth"
-            });
-        }
-        document.getElementById("menu-container").style.display = "none";
-    });
-});
-</script></body>
+</body>
 </html>
