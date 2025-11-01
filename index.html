@@ -1900,62 +1900,8 @@
       }
     };
     </script>
-<style>
-.hamburger-menu {
-    position: relative;
-    background-color: #222;
-    padding: 10px;
-}
-#menu-toggle {
-    font-size: 24px;
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-}
-.menu {
-    display: none;
-    flex-direction: column;
-    background-color: #333;
-    animation: slideDown 0.3s ease-out forwards;
-}
-.menu ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.menu li {
-    border-bottom: 1px solid #444;
-}
-.menu-link {
-    display: block;
-    padding: 10px;
-    color: white;
-    text-decoration: none;
-}
-.menu-link:hover, .menu-link.active {
-    background-color: #555;
-}
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-</style></head>
-<body>
-<div class="hamburger-menu">
-<button id="menu-toggle">☰</button>
-<nav class="menu" id="menu">
-<ul>
-<li><a class="menu-link active" href="#rosa">🏃 Rosa</a></li>
-<li><a class="menu-link" href="#calendario">📅 Calendario</a></li>
-<li><a class="menu-link" href="#classifica">📊 Classifica</a></li>
-<li><a class="menu-link" href="#statistiche">📈 Statistiche</a></li>
-<li><a class="menu-link" href="#video">🎥 Video</a></li>
-<li><a class="menu-link" href="#admin">🔧 Admin</a></li>
-</ul>
-</nav>
-</div>
-
+</head>
+<body><div class="hamburger-menu"><div class="menu-icon" onclick="toggleMenu()">☰</div><ul id="menu-list" style="display:none;"><li><a href="#rosa" onclick="scrollToSection(event, this)">La nostra Rosa</a></li><li><a href="#calendario" onclick="scrollToSection(event, this)">Calendario &amp; Partite</a></li><li><a href="#classifica" onclick="scrollToSection(event, this)">Classifica</a></li><li><a href="#statistiche" onclick="scrollToSection(event, this)">Statistiche &amp; Voti</a></li><li><a href="#video" onclick="scrollToSection(event, this)">Video</a></li><li><a href="#torneo" onclick="scrollToSection(event, this)">Torneo</a></li></ul></div>
 <header>
 <div class="hero" role="banner">
 <img alt="Logo AC Tuscolano" src="Logo.png"/>
@@ -1966,15 +1912,7 @@
 </div>
 </header>
 <nav aria-label="Navigazione principale">
-<div class="nav-wrap">
-<button aria-current="page" class="tab" data-target="rosa-section" id="rosa-tab" onclick="showPublicSection('rosa-section')">La nostra Rosa</button>
-<button class="tab" data-target="calendario-section" id="calendario-tab" onclick="showPublicSection('calendario-section')">Calendario &amp; Partite</button>
-<button class="tab" data-target="classifica-section" id="classifica-tab" onclick="showPublicSection('classifica-section')">Classifica</button>
-<button class="tab" data-target="statistiche-section" id="statistiche-tab" onclick="showPublicSection('statistiche-section')">Statistiche &amp; Voti</button>
-<button class="tab" data-target="video-section" id="video-tab" onclick="showPublicSection('video-section')">Video</button>
-<a class="tab" href="https://www.romatornei.it/calcio-a-8-over-40-roma-sud" style="text-decoration:none;" target="_blank">Torneo</a>
-<button class="btn" id="auth-toggle-btn" onclick="handleAuthToggle()">Login</button>
-</div>
+
 </nav>
 <div id="admin-menu" style="display:none">
 <div class="nav-wrap">
@@ -2198,15 +2136,17 @@
   AC Tuscolano | Gestione Squadra
 </footer>
 <script>
-document.getElementById("menu-toggle").addEventListener("click", function() {
-    const menu = document.getElementById("menu");
-    menu.style.display = menu.style.display === "flex" ? "none" : "flex";
-});
-document.querySelectorAll(".menu-link").forEach(link => {
-    link.addEventListener("click", function() {
-        document.querySelectorAll(".menu-link").forEach(l => l.classList.remove("active"));
-        this.classList.add("active");
-    });
-});
+function toggleMenu() {
+    var menu = document.getElementById("menu-list");
+    menu.style.display = (menu.style.display === "none") ? "block" : "none";
+}
+function scrollToSection(event, element) {
+    event.preventDefault();
+    var targetId = element.getAttribute("href").substring(1);
+    var targetElement = document.getElementById(targetId);
+    if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth' });
+    }
+}
 </script></body>
 </html>
