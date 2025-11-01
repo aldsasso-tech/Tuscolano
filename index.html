@@ -1900,58 +1900,21 @@
       }
     };
     </script>
-<style>
-/* Base styles */
-body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-}
 
-/* Responsive container */
-.container {
-    width: 100%;
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 10px;
-    box-sizing: border-box;
-}
-
-/* Responsive images */
-img {
-    max-width: 100%;
-    height: auto;
-}
-
-/* Responsive text */
-h1, h2, h3, p {
-    word-wrap: break-word;
-}
-
-/* Flex layout for sections */
-.flex-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.flex-col {
-    flex: 1 1 100%;
-}
-
-/* Media queries for smaller screens */
-@media (min-width: 600px) {
-    .flex-col {
-        flex: 1 1 48%;
+<script>
+function filterCandidature(status) {
+  const rows = document.querySelectorAll('.candidature-row');
+  rows.forEach(row => {
+    const availability = row.getAttribute('data-availability');
+    if (status === 'all' || availability === status) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
     }
+  });
 }
-
-@media (min-width: 900px) {
-    .flex-col {
-        flex: 1 1 30%;
-    }
-}
-</style></head>
+</script>
+</head>
 <body>
 <header>
 <div class="hero" role="banner">
