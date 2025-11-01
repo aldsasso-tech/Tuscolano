@@ -759,12 +759,14 @@ nav{ display:none !important; } /* evitiamo spazio giallo inutilizzato su mobile
       rows.forEach(([id,g])=>{
         const li = document.createElement('li'); li.className='card';
         li.innerHTML = `
-          <div class="row" style="justify-content:space-between">
-            <div>
-              <div class="player-title">${g.nome} ${g.cognome} <span class="pill">#${g.numero}</span></div>
-              <div class="player-sub">Ruolo: <b>${g.ruolo}</b> • Stato: <b>${g.stato}</b></div>
-            </div>
-          </div>`;
+  <div class="row" style="justify-content:space-between; align-items:center; width:100%;">
+    <div><b>vs ${escapeHtml(p.avversaria)}</b><br><span class="player-sub">${p.data}</span></div>
+    <div style="text-align:right;">
+      <div class="player-title"><b>${p.risultato || 'N/D'}</b></div>
+      ${esitoPill}
+    </div>
+  </div>
+`;
         ul.appendChild(li);
       });
     }
