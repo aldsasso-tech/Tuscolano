@@ -1901,7 +1901,20 @@
     };
     </script>
 </head>
-<body><div id="notification" style="display:none;position:fixed;top:10px;right:10px;background:#4CAF50;color:white;padding:10px;border-radius:5px;z-index:1000;">Candidatura salvata con successo!</div>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+<div class="container-fluid">
+<a class="navbar-brand" href="#">AC Tuscolano</a>
+<button aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-bs-target="#navbarMenu" data-bs-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<div class="collapse navbar-collapse" id="navbarMenu">
+<ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+<li class="nav-item"><a class="nav-link" href="#Formazione">Formazione</a></li><li class="nav-item"><a class="nav-link" href="#Calendario">Calendario</a></li><li class="nav-item"><a class="nav-link" href="#Login">Login</a></li><li class="nav-item"><a class="nav-link" href="#Admin">Admin</a></li><li class="nav-item"><a class="nav-link" href="#Risultato">Risultato</a></li><li class="nav-item"><a class="nav-link" href="#Video">Video</a></li></ul>
+</div>
+</div>
+</nav>
+
 <header>
 <div class="hero" role="banner">
 <img alt="Logo AC Tuscolano" src="Logo.png"/>
@@ -1935,7 +1948,7 @@
 </div>
 <main>
 <section id="login-section" style="display:none">
-<h2>Login</h2>
+
 <form id="login-form">
 <label>Email</label><input id="login-email" required="" type="email"/>
 <label>Password</label><input id="login-password" required="" type="password"/>
@@ -1969,12 +1982,12 @@
 </div>
 </section>
 <section id="video-section" style="display:none">
-<h2>Video Partite Concluse</h2>
+
 <ul id="video-list-ul" style="display:grid; gap:16px;">
 </ul>
 </section>
 <section id="formazione-pubblica-section" style="display:none">
-<h2>Formazione Ufficiale</h2>
+
 <div id="formazione-pubblica-content"></div>
 <div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
 </section>
@@ -1984,7 +1997,7 @@
 <div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
 </section>
 <section id="admin-inserimento-giocatori-section" style="display:none">
-<h2>Admin · Inserimento giocatori</h2>
+
 <form id="giocatore-form" onsubmit="addPlayer(event)">
 <label>Nome</label><input id="giocatore-nome" required=""/>
 <label>Cognome</label><input id="giocatore-cognome" required=""/>
@@ -2025,7 +2038,7 @@
 </form>
 </section>
 <section id="admin-calendario-section" style="display:none">
-<h2>Admin · Calendario</h2>
+
 <div class="help">Visualizza/Modifica formazioni e Valuta prestazioni. Ordinato dalla più recente.</div>
 <ul class="grid cols-3" id="admin-calendario-list"></ul>
 </section>
@@ -2042,7 +2055,7 @@
 <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario</button></div>
 </section>
 <section id="admin-statistiche-section" style="display:none">
-<h2>Admin · Risultato partita</h2>
+
 <form id="risultato-form" onsubmit="saveMatchResult(event)">
 <label>Seleziona partita conclusa</label>
 <select id="risultato-match-select" required="">
@@ -2143,30 +2156,5 @@
 <footer>
   AC Tuscolano | Gestione Squadra
 </footer>
-<script>
-function showNotification(message) {
-    var notification = document.getElementById("notification");
-    notification.textContent = message;
-    notification.style.display = "block";
-    setTimeout(function() {
-        notification.style.display = "none";
-    }, 3000);
-}
-
-function fetchCandidatureDetails(partitaId) {
-    const dbRef = firebase.database().ref("calendario/" + partitaId + "/candidature");
-    dbRef.once("value", function(snapshot) {
-        let details = "<h3>Dettaglio candidature</h3><ul>";
-        snapshot.forEach(function(childSnapshot) {
-            const giocatore = childSnapshot.key;
-            const stato = childSnapshot.val();
-            details += "<li><strong>" + giocatore + ":</strong> " + stato + "</li>";
-        });
-        details += "</ul>";
-        const detailContainer = document.getElementById("candidature-details");
-        detailContainer.innerHTML = details;
-        detailContainer.style.display = "block";
-    });
-}
-</script><div id="candidature-details" style="display:none;padding:10px;background:#f9f9f9;border:1px solid #ccc;margin-top:20px;"></div></body>
+<div class="container my-3" id="Formazione"><h2>Formazione Ufficiale</h2></div><div class="container my-3" id="Calendario"><h2>Admin · Calendario</h2></div><div class="container my-3" id="Login"><h2>Login</h2></div><div class="container my-3" id="Admin"><h2>Admin · Inserimento giocatori</h2></div><div class="container my-3" id="Risultato"><h2>Admin · Risultato partita</h2></div><div class="container my-3" id="Video"><h2>Video Partite Concluse</h2></div></body>
 </html>
