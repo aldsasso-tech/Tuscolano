@@ -1900,22 +1900,8 @@
       }
     };
     </script>
-
-<script>
-function filterCandidature(status) {
-  const rows = document.querySelectorAll('.candidature-row');
-  rows.forEach(row => {
-    const availability = row.getAttribute('data-availability');
-    if (status === 'all' || availability === status) {
-      row.style.display = '';
-    } else {
-      row.style.display = 'none';
-    }
-  });
-}
-</script>
 </head>
-<body>
+<body><div id="notification" style="display:none;position:fixed;top:10px;right:10px;background:#4CAF50;color:white;padding:10px;border-radius:5px;z-index:1000;">Candidatura salvata con successo!</div>
 <header>
 <div class="hero" role="banner">
 <img alt="Logo AC Tuscolano" src="Logo.png"/>
@@ -2157,5 +2143,30 @@ function filterCandidature(status) {
 <footer>
   AC Tuscolano | Gestione Squadra
 </footer>
-</body>
+<script>
+function showNotification(message) {
+    var notification = document.getElementById("notification");
+    notification.textContent = message;
+    notification.style.display = "block";
+    setTimeout(function() {
+        notification.style.display = "none";
+    }, 3000);
+}
+
+function fetchCandidatureDetails(partitaId) {
+    const dbRef = firebase.database().ref("calendario/" + partitaId + "/candidature");
+    dbRef.once("value", function(snapshot) {
+        let details = "<h3>Dettaglio candidature</h3><ul>";
+        snapshot.forEach(function(childSnapshot) {
+            const giocatore = childSnapshot.key;
+            const stato = childSnapshot.val();
+            details += "<li><strong>" + giocatore + ":</strong> " + stato + "</li>";
+        });
+        details += "</ul>";
+        const detailContainer = document.getElementById("candidature-details");
+        detailContainer.innerHTML = details;
+        detailContainer.style.display = "block";
+    });
+}
+</script><div id="candidature-details" style="display:none;padding:10px;background:#f9f9f9;border:1px solid #ccc;margin-top:20px;"></div></body>
 </html>
