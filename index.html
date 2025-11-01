@@ -882,7 +882,7 @@
         const risultatoValido = (m.risultato && m.risultato !== 'N/D');
         if (isPast && risultatoValido) {
           // CHIAMATA CORRETTA: showPrestazioniPubbliche
-          prestazioniBtn = `<button class="btn" onclick="showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
+          prestazioniBtn = `<button class="btn" onclick="window.showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
         } else {
           prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
         }
@@ -935,11 +935,11 @@
                 ${risultatoValido ? `<button class="btn btn--admin" onclick="showValutazionePartitaForm('${matchId}','${escapeHtml(m.avversaria)}')">Valuta Prestazioni</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Valuta Prestazioni</button>`}
                 <button class="btn" onclick="crudDeletePartita('${matchId}')">Elimina Partita</button>
               ` : (isPast ? `
-                ${risultatoValido && isPublished ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione</button>` : ''}
+                ${risultatoValido && isPublished ? `<button class="btn" onclick="window.showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione</button>` : ''}
                 ${prestazioniBtn}
               ` : `
                 ${candButton}
-                ${isPublished ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione Pubblica</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Formazione</button>`}
+                ${isPublished ? `<button class="btn" onclick="window.showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione Pubblica</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Formazione</button>`}
               `)}
             </div>
           </div>`;
@@ -1130,8 +1130,10 @@
       }
     }
 
-
-    async function showFormazionePubblica(matchId, avv){
+    /**
+     * FIX: Esposto a window per essere accessibile dall'onclick HTML
+     */
+    window.showFormazionePubblica = async function(matchId, avv){
       window.showPublicSection('formazione-pubblica-section');
       const box = byId('formazione-pubblica-content');
       box.innerHTML = 'Caricamento formazione...';
@@ -1216,7 +1218,10 @@
       box.innerHTML = html.join('');
     }
 
-    async function showPrestazioniPubbliche(matchId, avv){
+    /**
+     * FIX: Esposto a window per essere accessibile dall'onclick HTML
+     */
+    window.showPrestazioniPubbliche = async function(matchId, avv){
       window.showPublicSection('prestazioni-partita-section');
       const content = byId('prestazioni-partita-content');
       content.innerHTML = 'Caricamento prestazioni...';
