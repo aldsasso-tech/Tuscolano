@@ -49,7 +49,7 @@
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css"/>
 
   <style>
-    /* CSS originale */
+    /* CSS originale (omesso per brevità, resta invariato) */
     :root{
       /* Brand */
       --white:#ffffff;
@@ -388,16 +388,16 @@
       'admin-inserimento-giocatori-section',
       'admin-inserimento-giornate-section',
       'admin-calendario-section',
-      'admin-formazione-section', // Mantenuto per la logica di showFormazioneForm
-      'admin-statistiche-section', // Mantenuta per il form "Risultato"
+      'admin-formazione-section',
+      'admin-statistiche-section', 
       'admin-prestazioni-partita-section',
       'admin-candidature-section',
       'admin-gestione-dati-section',
       'admin-utenti-section',
       'admin-video-section',
-      'admin-classifica-section' // NUOVO
+      'admin-classifica-section'
     ];
-    const ALL_SECTIONS = [...PUBLIC_SECTIONS, ...ADMIN_SECTIONS, 'login-section']; // Includo il login per nasconderlo
+    const ALL_SECTIONS = [...PUBLIC_SECTIONS, ...ADMIN_SECTIONS, 'login-section']; 
 
     // Funzione per mostrare le sezioni pubbliche
     window.showPublicSection = (id = 'rosa-section') => {
@@ -428,8 +428,8 @@
         // Ricarica i dati specifici per la sezione admin (dal tuo codice originale)
         if(id==='admin-calendario-section'){ window.loadProssimeGiornate(true); }
         if(id==='admin-inserimento-giornate-section'){ $("#match-data").datepicker({ dateFormat:"dd/mm/yy", minDate:0 }); }
-        if(id==='admin-candidature-section'){ loadCandidature(); }
-        if(id==='admin-gestione-dati-section'){ window.loadCrudGiocatori(); window.loadCrudPartite(); }
+        if(id==='admin-candidature-section'){ loadCandidature(); } // NB: loadCandidature() è ancora un placeholder
+        if(id==='admin-gestione-dati-section'){ window.loadCrudGiocatori(); window.loadCrudPartite(); } // NB: loadCrud... sono ancora placeholder
         if (id === 'admin-video-section') loadPartitePerVideoAdmin(); 
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -470,13 +470,11 @@
       
       // Assicura che una sezione sia visibile al cambio di stato
       if(user && isAdmin) {
-         // Se admin loggato, mostra la sezione predefinita admin (es. inserimento giocatori)
          const adminSection = byId('admin-inserimento-giocatori-section');
          if(adminSection && adminSection.style.display === 'none'){
             window.showAdminSection('admin-inserimento-giocatori-section');
          }
       } else {
-         // Se loggout o utente normale, mostra la sezione pubblica predefinita
          window.showPublicSection('rosa-section');
       }
     });
@@ -486,7 +484,6 @@
       if(user){
         signOut(auth).then(()=>{
           hideLogin();
-          // Ricarica la sezione pubblica dopo il logout
           window.showPublicSection('rosa-section');
         });
       } else {
@@ -546,7 +543,7 @@
     
     
     /**
-     * NUOVA Funzione Classifica:
+     * Funzione Classifica:
      * Legge SOLO dalla cache di Firebase.
      */
     window.loadClassifica = async () => {
@@ -568,7 +565,7 @@
     };
 
     /**
-     * NUOVA Funzione Admin:
+     * Funzione Admin:
      * Aggiorna la classifica dal sito e la salva su Firebase.
      */
     window.updateClassificaFromSito = async () => {
@@ -656,7 +653,7 @@
     };
 
 
-    /* ===== NUOVE FUNZIONI VIDEO (INTEGRATE) ===== */
+    /* ===== FUNZIONI VIDEO ===== */
 
     const getYouTubeId = (url) => {
       if (!url) return null;
@@ -842,10 +839,6 @@
 
     /**
      * FUNZIONE loadProssimeGiornate (SPOSTATA QUI)
-     * Include il pulsante "Prestazioni" (pubblico) e RIMUOVE "Valuta" (admin)
-     * Layout pulsanti pubblici corretto (singola riga)
-     *
-     * MODIFICA: Aggiunto calcolo e visualizzazione ESITO (VITTORIA, PAREGGIO, SCONFITTA)
      */
     window.loadProssimeGiornate = async function(asAdmin){
       const listId = asAdmin ? 'admin-calendario-list' : 'calendario-list';
@@ -871,20 +864,20 @@
         if (isPast) {
           candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura scaduta</button>`;
         } else {
-          candButton = `<button class="btn btn--accent" onclick="candidati('${matchId}')">Candidatura</button>`;
+          // Utilizza la funzione placeholder candidati, che è OK per la sezione pubblica
+          candButton = `<button class="btn btn--accent" onclick="candidati('${matchId}')">Candidatura</button>`; 
         }
 
         // Prestazioni: sempre mostrato. Attivo solo se partita passata con risultato valido.
         let prestazioniBtn = '';
         const risultatoValido = (m.risultato && m.risultato !== 'N/D');
         if (isPast && risultatoValido) {
-          // Passa anche il nome avversaria alla funzione
           prestazioniBtn = `<button class="btn" onclick="showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
         } else {
           prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
         }
 
-        // NUOVA LOGICA: Calcolo Esito per display in Calendario [MODIFICA 1: ESITO]
+        // NUOVA LOGICA: Calcolo Esito per display in Calendario
         let esitoPill = '';
         if (m.risultato && m.risultato !== 'N/D') {
             const [scoreCasaStr, scoreOspiteStr] = m.risultato.split('-').map(s => s.trim());
@@ -894,7 +887,6 @@
             if (!isNaN(scoreCasa) && !isNaN(scoreOspite)) {
                 let esito = '';
                 let esitoColor = '';
-                // AC Tuscolano score depends on 'casa' flag
                 const scoreTuscolano = m.casa ? scoreCasa : scoreOspite;
                 const scoreAvversaria = m.casa ? scoreOspite : scoreCasa;
 
@@ -908,10 +900,9 @@
                     esito = 'PAREGGIO';
                     esitoColor = 'background:var(--yellow); color:#111;'; // Yellow
                 }
-                // Add the esito pill to be displayed
                 esitoPill = `<span class="pill" style="${esitoColor} margin-left: 10px; flex-shrink:0;">${esito}</span>`;
             }
-        } // FINE NUOVA LOGICA
+        } 
         
         const li = document.createElement('li'); li.className = 'card';
         li.innerHTML = `
@@ -1278,22 +1269,66 @@
         content.innerHTML = `<h3>Prestazioni vs ${escapeHtml(avv)}</h3><p style="color:red">Impossibile caricare le prestazioni.</p>`;
       }
     }
-    /* Altre funzioni JS qui (addPlayer, candidati, showResultForm, showFormazioneForm, ecc.) sono omesse per brevità ma devono essere presenti nel file finale */
     
-    // placeholder per le funzioni non pubbliche
-    window.addPlayer=()=>alert("Funzione Admin");
-    window.candidati=()=>alert("Funzione Candidatura");
-    window.showResultForm=()=>alert("Funzione Admin");
-    window.showFormazioneForm=()=>alert("Funzione Admin");
-    window.loadCrudGiocatori=()=>alert("Funzione Admin");
-    window.loadCrudPartite=()=>alert("Funzione Admin");
-    window.crudDeletePartita=()=>alert("Funzione Admin");
-    window.showValutazionePartitaForm=()=>alert("Funzione Admin");
-    window.loadCandidature=()=>alert("Funzione Admin");
-    window.showCandidatureEditor=()=>alert("Funzione Admin");
-    window.loadCandidatureForMatch=()=>alert("Funzione Admin");
-    window.closeCandidatureEditor=()=>alert("Funzione Admin");
     
+    /* ========================================================================= */
+    /* === CORREZIONE: FUNZIONI ADMIN PER APRIRE LE SEZIONI === */
+    /* ========================================================================= */
+    
+    // Funzione per aprire la sezione di inserimento risultati/video
+    window.showResultForm = (matchId, avv) => {
+      window.showAdminSection('admin-statistiche-section');
+      const container = byId('risultato-form-container');
+      // Contenuto placeholder. Qui andrà la tua logica di caricamento form e salvataggio
+      container.innerHTML = `<h3>Inserimento Risultato/Video vs ${escapeHtml(avv)}</h3>
+                             <div class="help">**Da completare:** Inserisci qui la logica del form per risultato, marcatori e link video. <br>Match ID: **${matchId}**</div>`;
+    };
+    
+    // Funzione per aprire la sezione di gestione formazione e sostituzioni
+    window.showFormazioneForm = (matchId, avv, formazione) => {
+      window.showAdminSection('admin-formazione-section');
+      const container = byId('formazione-form-container');
+      // Contenuto placeholder. Qui andrà la tua logica di caricamento form e salvataggio
+      container.innerHTML = `<h3>Gestione Formazione/Sostituzioni vs ${escapeHtml(avv)}</h3>
+                             <div class="help">**Da completare:** Inserisci qui la logica per selezionare i titolari, la panchina e gestire le sostituzioni. <br>Match ID: **${matchId}**</div>`;
+    };
+
+    // Funzione per aprire la sezione di valutazione prestazioni (voti e bonus)
+    window.showValutazionePartitaForm = (matchId, avv) => {
+      window.showAdminSection('admin-prestazioni-partita-section');
+      const container = byId('prestazioni-form-container');
+      // Contenuto placeholder. Qui andrà la tua logica di caricamento form e salvataggio
+      container.innerHTML = `<h3>Valutazione Prestazioni vs ${escapeHtml(avv)}</h3>
+                             <div class="help">**Da completare:** Inserisci qui la logica per assegnare voti e bonus a tutti i giocatori. <br>Match ID: **${matchId}**</div>`;
+    };
+    
+    // Funzione per aprire l'editor delle candidature (Admin)
+    window.showCandidatureEditor = (matchId, avv) => {
+        window.showAdminSection('admin-candidature-section');
+        const container = byId('candidature-list');
+        container.innerHTML = `<h3>Gestione Candidature vs ${escapeHtml(avv)}</h3>
+                               <div class="help">**Da completare:** Inserisci qui la lista dei giocatori che si sono candidati e la logica per accettarli/rifiutarli. <br>Match ID: **${matchId}**</div>`;
+    };
+
+    /* ========================================================================= */
+    /* === Placeholder Funzioni non implementate (per evitare errori) === */
+    /* ========================================================================= */
+    
+    // Funzioni Admin placeholder
+    window.addPlayer=()=>alert("La funzione di aggiunta giocatore non è implementata. Aggiungi la logica di salvataggio su Firebase.");
+    window.addMatch=()=>alert("La funzione di aggiunta partita non è implementata. Aggiungi la logica di salvataggio su Firebase.");
+    window.loadCrudGiocatori=()=>document.getElementById('crud-giocatori-body').innerHTML='<tr><td colspan="7">**Da implementare:** logica di caricamento e CRUD giocatori.</td></tr>';
+    window.loadCrudPartite=()=>document.getElementById('crud-partite-body').innerHTML='<tr><td colspan="6">**Da implementare:** logica di caricamento e CRUD partite.</td></tr>';
+    window.crudDeletePartita=()=>alert("La funzione di eliminazione partita non è implementata.");
+    window.loadCandidature=()=>alert("La funzione di caricamento candidature per admin è da completare.");
+    window.loadCandidatureForMatch=()=>document.getElementById('crud-candidature-body').innerHTML='<tr><td colspan="3">**Da implementare:** logica per caricare e modificare le candidature.</td></tr>';
+    window.closeCandidatureEditor=()=>alert("La funzione di chiusura editor candidature è da completare.");
+    
+    // Funzioni Pubbliche placeholder (candidati)
+    window.candidati = (matchId) => {
+        if(!auth.currentUser) return alert("Devi fare il login per candidarti.");
+        alert("La logica per la candidatura (salvataggio disponibilità utente) non è stata ancora implementata. Match ID: " + matchId);
+    };
     
   </script>
 </head>
@@ -1391,7 +1426,7 @@
 
   <section id="admin-inserimento-giocatori-section" style="display:none">
     <h2>Admin · Inserimento giocatori</h2>
-    <form id="giocatore-form" onsubmit="addPlayer(event)">
+    <form id="giocatore-form" onsubmit="window.addPlayer(event)">
       <label>Nome</label><input id="giocatore-nome" required />
       <label>Cognome</label><input id="giocatore-cognome" required />
       <label>Numero Maglia</label><input id="giocatore-numero" type="number" min="1" max="99" required />
@@ -1421,7 +1456,7 @@
 
   <section id="admin-inserimento-giornate-section" style="display:none">
     <h2>Admin · Inserimento giornate</h2>
-    <form id="match-form" onsubmit="addMatch(event)">
+    <form id="match-form" onsubmit="window.addMatch(event)">
       <div class="grid cols-2">
         <div><label>Data (gg/mm/aaaa)</label><input id="match-data" required /></div>
         <div><label>Ora (hh:mm)</label><input id="match-orario" type="time" placeholder="18:00" /></div>
@@ -1467,8 +1502,15 @@
   </section>
 
   <section id="admin-candidature-section" style="display:none">
-    <h2>Admin · Gestione Candidature (Dati)</h2>
+    <h2>Admin · Gestione Candidature</h2>
     <div id="candidature-list"></div>
+    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+  </section>
+  
+  <section id="admin-prestazioni-partita-section" style="display:none">
+    <h2>Admin · Valutazione Prestazioni</h2>
+    <div id="prestazioni-form-container"></div>
+    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
   </section>
   
   <section id="admin-gestione-dati-section" style="display:none">
@@ -1520,11 +1562,6 @@
     </div>
   </section>
 
-  <section id="admin-prestazioni-partita-section" style="display:none">
-    <h2>Admin · Valutazione Prestazioni</h2>
-    <div id="prestazioni-form-container"></div>
-    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-  </section>
 
   <section id="admin-utenti-section" style="display:none">
     <h2>Admin · Creazione Utente</h2>
