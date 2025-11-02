@@ -1338,6 +1338,164 @@
           }
         })();
     }
+// ================== ADMIN: FORMATION EDITOR ==================
+window.showFormazioneForm = async function(matchId, avv, formazioneJsonString){
+  window.showAdminSection('admin-formazione-section');
+  const container = byId('formazione-form-container');
+  container.innerHTML = 'Caricamento dati formazione...';
+
+  const norm = s => (String(s||'').trim().toLowerCase());
+
+  try {
+    // Carico partita, rosa, candidature (TRUE) e utenti per join UID se manca
+    const [snapMatch, snapRosa, snapCand, snapUsers] = await Promise.all([
+      get(ref(db, `calendario/${matchId}`)),
+      get(ref(db, 'rosa')),
+      get(ref(db, `calendario/${matchId}/candidature`)),
+      get(ref(db, 'utenti'))
+    ]);
+
+    const match = snapMatch.val() || {};
+    const rosa  = snapRosa.val()  || {};
+    const cand  = snapCand.val()  || {};   // {uid:true}
+    const utenti= snapUsers.val() || {};
+
+    // Indice utenti: nome|cognome -> uid
+    const nameIndex = {};
+    for (const [uid, u] of Object.entries(utenti)) {
+      const key = `${norm(u.nome)}|${norm(u.cognome)}`;
+      if (!nameIndex[key]) nameIndex[key] = uid;
+    }
+
+    // Arricchisco rosa con uid (scrivo solo se mancante e se trovo match)
+    const updates = {};
+    const players = Object.entries(rosa).map(([pid, p]) => {
+      let uid = p.uid || '';
+      if (!uid) {
+        const key = `${norm(p.nome)}|${norm(p.cognome)}`;
+        if (nameIndex[key]) {
+          uid = nameIndex[key];
+          updates[`rosa/${pid}/uid`] = uid; // ONLY if missing
+        }
+      }
+      return {
+        pid, uid,
+        nome: p.nome || '',
+        cognome: p.cognome || '',
+        numero: p.numero || 0,
+        ruolo: p.ruolo || ''
+      };
+    });
+
+    if (Object.keys(updates).length) {
+      try { await update(ref(db), updates); }
+      catch(e){ console.warn('Impossibile aggiornare alcuni UID in rosa:', e); }
+    }
+
+    // Solo candidati TRUE
+    const candidati = players.filter(pl => pl.uid && cand[pl.uid] === true);
+
+    // Ordina RUOLO -> NUMERO (estetico)
+    const ruoloOrder = (r) => {
+      const POR = ['Portiere'];
+      const DEF = ['Terzino sinistro','Terzino destro','Difensore centrale'];
+      const CEN = ['Centrocampista centrale','Centrocampista sinistro','Centrocampista destro'];
+      const ATT = ['Attaccante centrale'];
+      if (POR.includes(r)) return 0;
+      if (DEF.includes(r)) return 1;
+      if (CEN.includes(r)) return 2;
+      if (ATT.includes(r)) return 3;
+      return 9;
+    };
+    candidati.sort((a,b)=>{
+      const ra = ruoloOrder(a.ruolo), rb = ruoloOrder(b.ruolo);
+      if (ra !== rb) return ra - rb;
+      return (a.numero||0) - (b.numero||0);
+    });
+
+    const optionOf = (pl) =>
+      `<option value="${pl.uid}">${escapeHtml(pl.cognome)} ${escapeHtml(pl.nome)} (#${pl.numero} - ${pl.ruolo||'—'})</option>`;
+    const optionsHtml = candidati.map(optionOf).join('');
+
+    // Precarico eventuale formazione esistente (dal JSON string passato dal bottone)
+    const f0 = (() => { try { return (JSON.parse(formazioneJsonString)||{})['0'] || {}; } catch(_){ return {}; }})();
+    const titolariSaved = f0.formazione || {};
+    const panchinaSaved = Array.isArray(f0.panchina) ? f0.panchina : [];
+
+    const slotSelect = (id, label) => `
+      <label class="form-row">
+        <span class="form-label">${label}</span>
+        <select name="${id}" id="slot-${id}" class="form-input">
+          <option value="">— Seleziona —</option>
+          ${optionsHtml}
+        </select>
+      </label>`;
+
+    const benchSize = Math.min(8, Math.max(4, Math.max(0, candidati.length - 8)));
+
+    container.innerHTML = `
+      <h3>Gestione Formazione vs ${escapeHtml(avv)}</h3>
+      <form id="formazione-editor-form" data-match-id="${matchId}">
+        <fieldset class="card" style="margin-bottom:12px">
+          <legend>Formazione iniziale (3-3-1)</legend>
+          ${slotSelect('portiere', 'Portiere')}
+          <div class="grid grid-cols-3 gap-2">
+            ${slotSelect('d1','Difensore 1')}
+            ${slotSelect('d2','Difensore 2')}
+            ${slotSelect('d3','Difensore 3')}
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            ${slotSelect('c1','Centrocampista 1')}
+            ${slotSelect('c2','Centrocampista 2')}
+            ${slotSelect('c3','Centrocampista 3')}
+          </div>
+          ${slotSelect('attaccante','Attaccante')}
+        </fieldset>
+
+        <fieldset class="card" style="margin-bottom:12px">
+          <legend>Panchina (selezione multipla)</legend>
+          <select id="panchina-select" class="form-input" multiple size="${benchSize}">
+            ${optionsHtml}
+          </select>
+          <div class="help">Tieni premuto CTRL/CMD per selezioni multiple.</div>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="btn btn--accent">Salva Formazione</button>
+          <button type="button" id="btn-pubblica-formazione" class="btn">Pubblica Formazione</button>
+        </div>
+      </form>
+    `;
+
+    // Preselezioni titolari e panchina
+    const setVal = (id, uid) => { const el = byId(`slot-${id}`); if (el && uid) el.value = uid; };
+    setVal('portiere',   titolariSaved.portiere   || '');
+    setVal('d1',         titolariSaved.d1         || '');
+    setVal('d2',         titolariSaved.d2         || '');
+    setVal('d3',         titolariSaved.d3         || '');
+    setVal('c1',         titolariSaved.c1         || '');
+    setVal('c2',         titolariSaved.c2         || '');
+    setVal('c3',         titolariSaved.c3         || '');
+    setVal('attaccante', titolariSaved.attaccante || '');
+
+    const panSel = byId('panchina-select');
+    if (panSel && panchinaSaved.length) {
+      const values = new Set(panchinaSaved);
+      [...panSel.options].forEach(o => { if (values.has(o.value)) o.selected = true; });
+    }
+
+    // Bindazioni
+    byId('formazione-editor-form').onsubmit = (ev) => {
+      ev.preventDefault();
+      window.saveFormazione(matchId);
+    };
+    byId('btn-pubblica-formazione').onclick = () => window.pubblicaFormazione(matchId);
+
+  } catch(e) {
+    console.error('Errore showFormazioneForm:', e);
+    container.innerHTML = `<div class="error">Errore nel caricamento dati formazione.</div>`;
+  }
+};
 
     /**
      * FIX: Esposto a window per essere accessibile dall'onclick HTML
