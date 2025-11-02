@@ -1903,8 +1903,26 @@ tit = newFormat;
     'attaccante': {top:'10%', left:'50%'}
   };
 
-  Object.entries(tit).forEach(([slot, uid])=>{
-    const pl = Object.values(rosa).find(r=>r.uid === uid); 
+  Object.entries(tit).forEach(([slot, id])=>{
+
+  // NEW FORMAT → UID auth
+  let pl = Object.values(rosa).find(r=>r.uid === id);
+
+  // OLD FORMAT → PID rosa
+  if (!pl && rosa[id]) {
+    pl = rosa[id];
+  }
+
+  const pos = POS_331[slot];
+  if (pl && pos){
+    html.push(`
+      <div class="marker" style="top:${pos.top}; left:${pos.left};">
+        <b>${escapeHtml(pl.cognome)}</b><br>${escapeHtml(pl.nome)}
+      </div>
+    `);
+  }
+});
+
     const pos = POS_331[slot];
     if(pl && pos){
       html.push(`
