@@ -1936,57 +1936,7 @@ window.loadCandidatureForMatch = async function(matchId){
       `;
     };
     
-    /**
-     * FIX: Carica dati esistenti per il form Formazione/Sostituzioni.
-     */
-    window.showFormazioneForm = async function(matchId, avv, formazioneJsonString) { // Accetta la stringa JSON escapata
-      window.showAdminSection('admin-formazione-section');
-      const container = byId('formazione-form-container');
-      container.innerHTML = 'Caricamento dati formazione...';
-      
-      const f = JSON.parse(formazioneJsonString) || {}; // Fa il parse della stringa JSON
-      const titolariIniziali = f['0']?.formazione || {};
-      const panchinaIds = f['0']?.panchina || [];
-      
-      const snap = await get(ref(db, `calendario/${matchId}`));
-      const m = snap.val() || {};
-      const sostituzioni = m.sostituzioni || [];
 
-      let titolariInfo = 'Nessun titolare salvato.';
-      if (titolariIniziali && Object.keys(titolariIniziali).length > 0) {
-        titolariInfo = 'Titolari già salvati per: ' + Object.keys(titolariIniziali).map(r => `<b>${r}</b>`).join(', ');
-      }
-      
-      let panchinaInfo = 'Nessuna panchina salvata.';
-      if (panchinaIds && panchinaIds.length > 0) {
-        panchinaInfo = `Panchina salvata con <b>${panchinaIds.length}</b> giocatori.`;
-      }
-
-      let sostituzioniInfo = 'Nessuna sostituzione salvata.';
-      if (sostituzioni && sostituzioni.length > 0) {
-        sostituzioniInfo = `<b>${sostituzioni.length}</b> sostituzioni salvate.`;
-      }
-      
-      container.innerHTML = `
-        <h3>Gestione Formazione/Sostituzioni vs ${escapeHtml(avv)}</h3>
-        <div class="help">**Attenzione:** I campi di input per titolari/panchina/sostituzioni sono da implementare. Vengono mostrati solo i dati attuali.</div>
-        <form id="formazione-editor-form" data-match-id="${matchId}">
-            <h4>Formazione Iniziale (Minuto 0)</h4>
-            <div class="help">${titolariInfo}</div>
-            <div class="help">${panchinaInfo}</div>
-            <p class="help">Qui andranno i campi di selezione dei giocatori per ruolo.</p>
-            <hr>
-            <h4>Sostituzioni</h4>
-            <div class="help">${sostituzioniInfo}</div>
-            <p class="help">Qui andrà la tabella per aggiungere e rimuovere le sostituzioni.</p>
-            <p class="help">ID Partita: <b>${matchId}</b></p>
-            <div class="actions">
-                <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Formazione e Sostituzioni</button>
-                <button type="button" class="btn" onclick="alert('Funzione di pubblicazione da implementare!')">Pubblica Formazione</button>
-            </div>
-        </form>
-      `;
-    };
     
     /**
      * FIX: Carica dati esistenti per il form Valutazione Prestazioni.
