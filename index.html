@@ -104,7 +104,7 @@
     /* Table-like list */
     .table{width:100%;border-collapse:collapse}
     .table th,.table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
-    .table thead th{font-size:.9rem;color:#000}
+    .table thead th{font-size:.9rem;color:#000} /* QUESTA REGOLA RENDE IL TESTO SCURO, VIENE SOVRASCRITTA INLINE */
     .table input, .table select {max-width: none !important; margin-top: 0; padding: 6px 8px; border-radius: 8px; font-size: 0.9rem;}
     
     /* NUOVI STILI: Modale Video */
@@ -557,7 +557,7 @@
     
     /**
      * Funzione Classifica:
-     * Legge dalla cache di Firebase e riformatta la tabella senza loghi. (FIX RICHIESTO)
+     * Legge dalla cache di Firebase e riformatta la tabella senza loghi. (FIX RICHIESTO: Colore Intestazione)
      */
     window.loadClassifica = async () => {
       const classificaContent = byId('classifica-content');
@@ -640,15 +640,15 @@
               <div style="overflow-x:auto">
                   <table class="table" style="width:100%; border-collapse:collapse; margin-top:8px; font-size:14px; table-layout:auto;">
                       <thead>
-                          <tr style="background:var(--ink); color:var(--white);"> 
-                              <th style="width:5%; text-align:center; padding:8px 4px;">Pos</th>
-                              <th style="width:35%; padding:8px 4px; text-align:left;">Squadra</th>
-                              <th style="width:10%; text-align:center; padding:8px 4px;">Pti</th>
-                              <th style="width:10%; text-align:center;">G</th>
-                              <th style="width:10%; text-align:center;">V</th>
-                              <th style="width:10%; text-align:center;">N</th>
-                              <th style="width:10%; text-align:center;">P</th>
-                              <th style="width:10%; text-align:center;">DR</th>
+                          <tr style="background:var(--ink);"> 
+                              <th style="width:5%; text-align:center; padding:8px 4px; color:var(--white);">Pos</th>
+                              <th style="width:35%; padding:8px 4px; text-align:left; color:var(--white);">Squadra</th>
+                              <th style="width:10%; text-align:center; padding:8px 4px; color:var(--white);">Pti</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">G</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">V</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">N</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">P</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">DR</th>
                           </tr>
                       </thead>
                       <tbody>
@@ -999,7 +999,7 @@
                     </div>
                 `;
             } else {
-                candidatiListHtml = `<div class="pill" style="margin-top:8px; font-size:0.85rem;">Nessuna disponibilità confermata.</div>`;
+                candidatiListHtml = `<div class="pill" style="margin-top:8px; font-size:0.85rem;">Nessuna disponibilità confermata (0).</div>`;
             }
         }
         // *** FINE LOGICA PER LISTA CANDIDATI PUBBLICA (FIX IMPLEMENTATO QUI) ***
