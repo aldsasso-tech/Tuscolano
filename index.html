@@ -1643,17 +1643,7 @@
      * FIX: Carica la lista delle candidature per una partita (Admin - Gestione Dati)
      * NOTA: Questa funzione assume che /rosa/{pid}/uid esista e sia l'Auth UID.
      */
-    window.loadCandidatureForMatch = async function(matchId){
-  const tbody = byId('crud-candidature-body');
-  const panel = byId('crud-candidature-panel');
-  if(!tbody || !panel) return;
-  
-  if (!matchId) {
-    panel.style.display = 'none';
-    return;
-  }
-  
-  tbody.innerHTML='<tr><td colspan="3">Caricamento candidature…</td></tr>';
+    tbody.innerHTML='<tr><td colspan="3">Caricamento candidature…</td></tr>';
   panel.style.display = 'block';
 
   try {
@@ -1714,45 +1704,7 @@
     tbody.innerHTML = '<tr><td colspan="3" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
   }
 }
-tbody.innerHTML='<tr><td colspan="3">Caricamento candidature...</td></tr>';
-      panel.style.display = 'block';
 
-      try {
-        const [snapRosa, snapCand] = await Promise.all([
-          get(ref(db, 'rosa')),
-          get(ref(db, `calendario/${matchId}/candidature`))
-        ]);
-        
-        const rosa = snapRosa.val() || {};
-        const candidature = snapCand.val() || {}; // Questo è { AuthUID_123: true }
-        
-        const rows = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
-        
-        let html = rows.map(([pid, p]) => { // pid = chiave push di rosa; p = dati giocatore rosa
-          // *** Controlla la candidatura usando l'UID del giocatore (p.uid) ***
-          // p.uid è l'Auth UID memorizzato nel record della rosa
-          const isCandidato = p.uid && candidature[p.uid] === true; 
-          return `
-            <tr>
-              <td>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)} (#${p.numero})</td>
-              <td>${p.uid || 'N/D'}</td>
-              <td>
-                <input type="checkbox" id="cand-${pid}" data-uid="${p.uid || ''}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;" ${!p.uid ? 'disabled' : ''}>
-                <label for="cand-${pid}" style="display:inline; font-weight:400; margin-left:8px;">Candidato ${!p.uid ? '(UID mancante)' : ''}</label>
-              </td>
-            </tr>
-          `;
-        }).join('');
-        
-        tbody.innerHTML = html;
-        
-        // Aggiorna l'azione del pulsante di salvataggio (ancora placeholder)
-        byId('crud-candidature-save').onclick = () => alert(`Funzione per salvare le candidature per la partita ${matchId} da implementare.`);
-
-      } catch(e) {
-        console.error("Errore caricamento Candidature CRUD:", e);
-        tbody.innerHTML = '<tr><td colspan="3" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
-      }
     }
 
 
@@ -1947,7 +1899,101 @@ tbody.innerHTML='<tr><td colspan="3">Caricamento candidature...</td></tr>';
         alert("La logica per la candidatura (salvataggio disponibilità utente) non è stata ancora implementata. Match ID: " + matchId);
     };
     
-  </script>
+  
+
+window.loadCandidatureForMatch = async function(matchId){
+  const tbody = byId('crud-candidature-body');
+  const panel = byId('crud-candidature-panel');
+  if(!tbody || !panel) return;
+  
+  if (!matchId) {
+    panel.style.display = 'none';
+    return;
+  }
+  
+  tbody.innerHTML='<tr><td colspan="3">Caricamento candidature…</td></tr>';
+  panel.style.display = 'block';
+
+  try {
+    // Carico: rosa, candidature della partita, e UTENTI (per join runtime + scrittura UID in rosa se mancante)
+    const [snapRosa, snapCand, snapUsers] = await Promise.all([
+      get(ref(db, 'rosa')),
+      get(ref(db, `calendario/${matchId}/candidature`)),
+      get(ref(db, 'utenti'))
+    ]);
+
+    const rosa = snapRosa.val() || {};
+    const candidature = snapCand.val() || {}; // { AuthUID: true|false }
+    const utenti = snapUsers.val() || {};
+
+    // Helper: normalizza stringhe per confronto robusto
+    const norm = s => (String(s||'').trim().toLowerCase());
+
+    // Prepara indice veloce degli utenti per nome+cognome -> uid
+    const nameIndex = {};
+    for (const [uid, u] of Object.entries(utenti)) {
+      const key = norm(u.nome) + '|' + norm(u.cognome);
+      if (!nameIndex[key]) nameIndex[key] = uid; // prima corrispondenza vince (runtime)
+    }
+
+    const rows = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+
+    const uidsToPersist = []; // [ [pid, uid], ... ]
+
+    let htmlRows = rows.map(([pid, p]) => {
+      // 1) UID preferito: quello già presente in rosa
+      let uid = p.uid || "";
+      // 2) Se assente, prova join runtime con nodo utenti (nome+cognome)
+      if (!uid) {
+        const key = norm(p.nome) + '|' + norm(p.cognome);
+        if (nameIndex[key]) uid = nameIndex[key];
+        // Opzione A (solo se mancante): persistere UID dentro /rosa/{pid}/uid
+        if (!p.uid && uid) {
+          uidsToPersist.push([pid, uid]);
+        }
+      }
+
+      const isCandidato = !!uid && candidature[uid] === true;
+
+      return `
+        <tr>
+          <td>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)} (#${p.numero})</td>
+          <td>${uid || 'N/D'}</td>
+          <td>
+            <input type="checkbox" id="cand-${pid}" data-uid="${uid || ''}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;" ${!uid ? 'disabled' : ''}>
+            <label for="cand-${pid}" style="display:inline; font-weight:400; margin-left:8px;">Candidato ${!uid ? '(UID mancante)' : ''}</label>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    tbody.innerHTML = htmlRows || '<tr><td colspan="3">Nessun giocatore in rosa.</td></tr>';
+
+    // Persistenza UID solo per quelli mancanti (opzione 1: solo se non esisteva)
+    if (uidsToPersist.length > 0) {
+      const updates = {};
+      for (const [pid, uid] of uidsToPersist) {
+        updates[`rosa/${pid}/uid`] = uid;
+      }
+      try {
+        await update(ref(db), updates);
+        console.log('UID aggiunti alla rosa per', uidsToPersist.length, 'giocatori.');
+      } catch (persistErr) {
+        console.warn('Impossibile aggiornare alcuni UID nella rosa:', persistErr);
+      }
+    }
+
+    // Pulsante Salva (placeholder, coerente con il resto del file)
+    const saveBtn = byId('crud-candidature-save');
+    if (saveBtn) saveBtn.onclick = () => alert(`Funzione per salvare le candidature per la partita ${matchId} da implementare.`);
+
+  } catch(e) {
+    console.error("Errore caricamento Candidature CRUD:", e);
+    tbody.innerHTML = '<tr><td colspan="3" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
+  }
+}
+
+</script>
 </head>
 <body> 
 <header> 
