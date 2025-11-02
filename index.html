@@ -1628,87 +1628,87 @@ function getPartecipantiOutfield(){
 }
 
 // Generatore equal-time (greedy, minuti interi, 7 on-field, blocchi 1 o 2 giocatori)
+// Generatore equal-time (illimitate, rientri liberi, minuti interi)
+// - eventi a cadenza fissa in funzione dei giocatori di movimento (Nout)
+// - a ogni evento scambiamo fino a "blocco" giocatori (1 o 2) tra campo e panchina
 function generaSostituzioniAutomatiche(blocco){
-  const partecipanti = getPartecipantiOutfield(); // UID outfield
+  // Parametri base
+  const TOT = 50;      // minuti gara
+  const K   = 7;       // giocatori di movimento in campo (portiere escluso)
+
+  // Rileva titolari/panchina corrente (solo movimento) e ordina per numero maglia
+  const partecipanti = getPartecipantiOutfield(); // UID uniq: startersOut + bench, ordinati per numero
   const starters = [
     byId('slot-d1')?.value, byId('slot-d2')?.value, byId('slot-d3')?.value,
     byId('slot-c1')?.value, byId('slot-c2')?.value, byId('slot-c3')?.value,
     byId('slot-attaccante')?.value
   ].filter(Boolean);
-  const bench = partecipanti.filter(uid => !starters.includes(uid));
+  let onField = starters.slice();
+  let onBench = partecipanti.filter(uid => !onField.includes(uid));
 
-  const K = 7;               // giocatori di movimento in campo
-  const TOT = 50;            // minuti gara
-  const FIELD_MIN = TOT * K; // 350
-
-  const Nout = partecipanti.length; // giocatori di movimento totali
-  if (Nout <= 7) {
-    // nessuna sostituzione necessaria
+  const Nout = partecipanti.length;        // giocatori di movimento totali
+  const FIELD_MIN = TOT * K;               // minuti "sul campo" complessivi (= 350)
+  if (Nout <= K) {
+    // Nessuna rotazione necessaria: tutti giocano sempre (o non c'è panchina)
     window._subsPlan = [];
     renderSubsEditor();
     return;
   }
 
-  // TARGET minuti per giocatore: distribuzione base +1 ai primi r del sort per numero maglia
+  // Target minuti per ciascuno (distribuzione equa ±1) seguendo l'ordine per numero maglia
   const base = Math.floor(FIELD_MIN / Nout);
   let r = FIELD_MIN % Nout;
-
-  const targets = {}; // uid -> target minuti
+  const targets = {}; // uid -> minuti target
   partecipanti.forEach(uid=>{
     const extra = (r>0) ? 1 : 0;
     targets[uid] = base + extra;
     r -= extra;
   });
 
-  // stato simulazione
-  let tPrev = 0;
+  // --- Cadenzamento eventi: dinamico in base a Nout (minuti interi)
+  // Più giocatori abbiamo, più fitta la cadenza.
+  // step = max(2', round(50 / Nout))  → es: Nout=10 => 5'; Nout=13 => 4'; Nout=8 => 6'
+  const step = Math.max(2, Math.round(TOT / Nout));
+  const times = [];
+  for (let m = step; m < TOT; m += step) times.push(m); // esclude 0 e 50
+
+  // Stato simulazione minuti giocati
   const played = {}; partecipanti.forEach(uid=> played[uid]=0);
-  let onField = starters.slice(); // 7 uid
-  let onBench = bench.slice();    // restanti
+  let tPrev = 0;
   const events = [];
 
-  // numero eventi = ceil(bench/blocco)
-  const evCount = Math.max(1, Math.ceil(onBench.length / Math.max(1,blocco)));
-  // tempi degli eventi (equidistanti, escluso 0 e 50)
-  const times = [];
-  for (let k=1; k<=evCount; k++){
-    const mk = Math.round((TOT * k) / (evCount + 1));
-    if (mk>0 && mk<TOT && !times.includes(mk)) times.push(mk);
-  }
-  times.sort((a,b)=>a-b);
-
-  function advance(toMinute){
+  const advance = (toMinute) => {
     const dt = Math.max(0, toMinute - tPrev);
     onField.forEach(uid => played[uid] += dt);
     tPrev = toMinute;
-  }
+  };
+  const surplus = uid => played[uid] - (targets[uid]||0);
+  const deficit = uid => (targets[uid]||0) - played[uid];
 
-  function surplus(uid){ return played[uid] - (targets[uid]||0); }
-  function deficit(uid){ return (targets[uid]||0) - played[uid]; }
-
-  // eventi programmati
+  // A ogni evento scambiamo fino a "blocco" giocatori (1 o 2) usando criterio surplus/deficit.
   times.forEach(min=>{
     advance(min);
 
-    // scegli chi esce: quelli con maggior surplus (o minor deficit), tra onField
+    // Chi esce: più "in surplus" tra quelli in campo (se parità, numero maglia più alto esce)
     const candOut = onField.slice().sort((a,b)=>{
       const sa = surplus(a), sb = surplus(b);
       if (sb !== sa) return sb - sa;
-      return (uidInfo[b]?.numero||0) - (uidInfo[a]?.numero||0); // in parità, esce chi ha numero più alto
+      return (uidInfo[b]?.numero||0) - (uidInfo[a]?.numero||0);
     });
 
-    // scegli chi entra: maggiore deficit tra bench
+    // Chi entra: più "in deficit" tra i panchinari (se parità, numero maglia più basso entra)
     const candIn = onBench.slice().sort((a,b)=>{
       const da = deficit(a), db = deficit(b);
       if (db !== da) return db - da;
-      return (uidInfo[a]?.numero||0) - (uidInfo[b]?.numero||0); // in parità, entra chi ha numero più basso
+      return (uidInfo[a]?.numero||0) - (uidInfo[b]?.numero||0);
     });
 
-    const n = Math.min(blocco, candOut.length, candIn.length);
+    const n = Math.min(Math.max(1,blocco), candOut.length, candIn.length);
     for (let i=0;i<n;i++){
       const esce = candOut[i];
       const entra = candIn[i];
-      // swap
+
+      // Swap
       onField = onField.filter(u => u !== esce);
       onField.push(entra);
       onBench = onBench.filter(u => u !== entra);
@@ -1718,13 +1718,14 @@ function generaSostituzioniAutomatiche(blocco){
     }
   });
 
-  // chiudi fino a 50'
+  // Chiudi fino al 50'
   advance(TOT);
 
-  // Piccolo fix: se qualcuno ha giocato (played- target) > 1 o < -1, si può aggiustare manualmente: mostriamo e lasciamo edit.
+  // Risultato: piano sostituzioni generato (modificabile a mano in editor)
   window._subsPlan = events;
   renderSubsEditor();
 }
+
 
 // bind bottoni piano sostituzioni
 byId('btn-genera-sostituzioni').onclick = ()=>{
