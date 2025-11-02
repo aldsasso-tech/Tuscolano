@@ -1452,13 +1452,11 @@ window.showFormazioneForm = async function(matchId, avv, formazioneJsonString){
           ${slotSelect('attaccante','Attaccante')}
         </fieldset>
 
-        <fieldset class="card" style="margin-bottom:12px">
-          <legend>Panchina (selezione multipla)</legend>
-          <select id="panchina-select" class="form-input" multiple size="${benchSize}">
-            ${optionsHtml}
-          </select>
-          <div class="help">Tieni premuto CTRL/CMD per selezioni multiple.</div>
-        </fieldset>
+      <fieldset class="card" style="margin-bottom:12px; padding:8px;">
+  <legend>Panchina</legend>
+  <div id="panchina-list"></div>
+  <div class="help">Tocca i giocatori per inserirli / rimuoverli dalla panchina.</div>
+</fieldset>
 
         <div class="actions">
           <button type="submit" class="btn btn--accent">Salva Formazione</button>
