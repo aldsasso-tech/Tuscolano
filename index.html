@@ -1432,6 +1432,34 @@ window.showFormazioneForm = async function(matchId, avv, formazioneJsonString){
       </label>`;
 
     const benchSize = Math.min(8, Math.max(4, Math.max(0, candidati.length - 8)));
+// set panchina runtime store
+let selectedPanchinaSet = new Set(panchinaSaved);
+
+// funzione render lista panchina
+function renderPanchinaList(){
+  const el = document.getElementById('panchina-list');
+  if(!el) return;
+
+  el.innerHTML = candidati.map(pl => {
+    const active = selectedPanchinaSet.has(pl.uid);
+    return `
+      <div class="card" data-uid="${pl.uid}" style="padding:8px; margin-bottom:6px; cursor:pointer; border:1px solid ${active?'#0a0':'#444'};">
+        <b>${escapeHtml(pl.cognome)} ${escapeHtml(pl.nome)}</b> (#${pl.numero} - ${pl.ruolo||'—'})<br>
+        <span style="font-size:12px; color:${active?'#0a0':'#999'}">${active?'IN PANCHINA':'TOCCA PER AGGIUNGERE'}</span>
+      </div>
+    `;
+  }).join('');
+
+  // add click listeners
+  el.querySelectorAll('[data-uid]').forEach(node=>{
+    node.onclick = ()=>{
+      const uid = node.getAttribute('data-uid');
+      if(selectedPanchinaSet.has(uid)) selectedPanchinaSet.delete(uid);
+      else selectedPanchinaSet.add(uid);
+      renderPanchinaList();
+    }
+  });
+}
 
     container.innerHTML = `
       <h3>Gestione Formazione vs ${escapeHtml(avv)}</h3>
@@ -1464,7 +1492,7 @@ window.showFormazioneForm = async function(matchId, avv, formazioneJsonString){
         </div>
       </form>
     `;
-
+renderPanchinaList();
     // Preselezioni titolari e panchina
     const setVal = (id, uid) => { const el = byId(`slot-${id}`); if (el && uid) el.value = uid; };
     setVal('portiere',   titolariSaved.portiere   || '');
@@ -1510,8 +1538,7 @@ window.saveFormazione = async function(matchId){
     };
 
     // Panchina (multi)
-    const panSel = byId('panchina-select');
-    const panchina = panSel ? [...panSel.selectedOptions].map(o => o.value) : [];
+    const panchina = Array.from(selectedPanchinaSet);
 
     // Candidati TRUE della partita
     const snapCand = await get(ref(db, `calendario/${matchId}/candidature`));
