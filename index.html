@@ -1440,17 +1440,31 @@ function renderPanchinaList(){
   const el = document.getElementById('panchina-list');
   if(!el) return;
 
-  el.innerHTML = candidati.map(pl => {
+  // recupero tutti i titolari attuali
+  const titolariUsati = new Set([
+    byId('slot-portiere')?.value,
+    byId('slot-d1')?.value,
+    byId('slot-d2')?.value,
+    byId('slot-d3')?.value,
+    byId('slot-c1')?.value,
+    byId('slot-c2')?.value,
+    byId('slot-c3')?.value,
+    byId('slot-attaccante')?.value
+  ].filter(Boolean));
+
+  // genera lista solo candidati non presenti nei titolari
+  const benchCandidates = candidati.filter(pl => !titolariUsati.has(pl.uid));
+
+  el.innerHTML = benchCandidates.map(pl => {
     const active = selectedPanchinaSet.has(pl.uid);
     return `
       <div class="card" data-uid="${pl.uid}" style="padding:8px; margin-bottom:6px; cursor:pointer; border:1px solid ${active?'#0a0':'#444'};">
-        <b>${escapeHtml(pl.cognome)} ${escapeHtml(pl.nome)}</b> (#${pl.numero} - ${pl.ruolo||'—'})<br>
-        <span style="font-size:12px; color:${active?'#0a0':'#999'}">${active?'IN PANCHINA':'TOCCA PER AGGIUNGERE'}</span>
+        <b>${escapeHtml(pl.cognome)} ${escapeHtml(pl.nome)}</b> (#${pl.numero} - ${pl.ruolo||'—'})
+        <div style="font-size:12px; color:${active?'#0a0':'#999'}">${active?'IN PANCHINA':'TOCCA PER AGGIUNGERE'}</div>
       </div>
     `;
   }).join('');
 
-  // add click listeners
   el.querySelectorAll('[data-uid]').forEach(node=>{
     node.onclick = ()=>{
       const uid = node.getAttribute('data-uid');
@@ -1460,6 +1474,7 @@ function renderPanchinaList(){
     }
   });
 }
+
 
     container.innerHTML = `
       <h3>Gestione Formazione vs ${escapeHtml(avv)}</h3>
@@ -1503,7 +1518,10 @@ renderPanchinaList();
     setVal('c2',         titolariSaved.c2         || '');
     setVal('c3',         titolariSaved.c3         || '');
     setVal('attaccante', titolariSaved.attaccante || '');
-
+['portiere','d1','d2','d3','c1','c2','c3','attaccante'].forEach(id=>{
+  const el = byId(`slot-${id}`);
+  if(el) el.onchange = renderPanchinaList;
+});
     const panSel = byId('panchina-select');
     if (panSel && panchinaSaved.length) {
       const values = new Set(panchinaSaved);
