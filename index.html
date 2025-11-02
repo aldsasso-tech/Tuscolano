@@ -640,14 +640,14 @@
               <div style="overflow-x:auto">
                   <table class="table" style="width:100%; border-collapse:collapse; margin-top:8px; font-size:14px; table-layout:auto;">
                       <thead>
-                          <tr style="background:var(--ink); color:var(--white);">
+                          <tr style="background:var(--ink); color:var(--white);"> 
                               <th style="width:5%; text-align:center; padding:8px 4px;">Pos</th>
                               <th style="width:35%; padding:8px 4px; text-align:left;">Squadra</th>
                               <th style="width:10%; text-align:center; padding:8px 4px;">Pti</th>
-                              <th style="width:10%; text-align:center; color:#ddd;">G</th>
-                              <th style="width:10%; text-align:center; color:#90ee90;">V</th>
-                              <th style="width:10%; text-align:center; color:#ddd;">N</th>
-                              <th style="width:10%; text-align:center; color:#ff7f7f;">P</th>
+                              <th style="width:10%; text-align:center;">G</th>
+                              <th style="width:10%; text-align:center;">V</th>
+                              <th style="width:10%; text-align:center;">N</th>
+                              <th style="width:10%; text-align:center;">P</th>
                               <th style="width:10%; text-align:center;">DR</th>
                           </tr>
                       </thead>
@@ -934,7 +934,8 @@
       for(const [matchId,m] of entries){
         const candSnap = await get(ref(db,`calendario/${matchId}/candidature`));
         const cand = candSnap.val() || {};
-        const candCount = Object.values(cand).filter(Boolean).length;
+        const candidatiIds = Object.keys(cand).filter(pid => cand[pid] === true);
+        const candCount = candidatiIds.length;
         const isPublished = m.formazionePubblicata === true;
         const matchDate = toDate(m.data);
         const isPast = matchDate < today;
@@ -966,8 +967,6 @@
             if (candCount > 0) {
                 let playersHtml = '<ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:4px;">';
                 
-                const candidatiIds = Object.keys(cand).filter(pid => cand[pid] === true);
-                
                 // Sort players by number (good practice)
                 const sortedCandidati = candidatiIds.map(pid => rosa[pid] ? { ...rosa[pid], id: pid } : null)
                     .filter(p => p !== null)
@@ -981,10 +980,10 @@
                     
                     // Struttura a riga flessibile per chiarezza
                     return `
-                        <li style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dotted #eee; padding:4px 0;">
-                            <div style="font-weight:700; flex-basis: 35%; line-height:1.2;">${nome} <b>${cognome}</b></div>
-                            <div style="font-size:0.9rem; flex-basis: 35%; color:var(--ink-sub); line-height:1.2;">${ruolo}</div>
-                            <div style="font-size:0.9rem; flex-basis: 30%; text-align:right;">
+                        <li style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; align-items:center; border-bottom:1px dotted #eee; padding:4px 0; font-size:0.9rem;">
+                            <div style="font-weight:700; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${nome} <b>${cognome}</b></div>
+                            <div style="color:var(--ink-sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${ruolo}</div>
+                            <div style="text-align:right;">
                                 <span class="pill" style="background:#0e7a0d; color:#fff; padding:2px 6px; font-size:.75rem;">${stato}</span>
                             </div>
                         </li>
@@ -1153,97 +1152,103 @@
     /**
      * CORREZIONE 2: Esposizione a window e logica per mostrare i dati del Riepilogo Giocatori
      */
-    window.loadPrestazioniAggregato = async function(){
-      const cont = byId('prestazioni-aggregate-content');
-      if(!cont) return;
-      cont.innerHTML = '<h3>Riepilogo Giocatori</h3><div class="help">Calcolo media voti e goal in corso…</div>';
+    window.loadPrestazioniAggregato = function(){
+        // Logica omessa per brevità, resta invariata rispetto alla precedente versione corretta.
+        // Assumo che la logica di calcolo e visualizzazione sia corretta.
+        const cont = byId('prestazioni-aggregate-content');
+        if(!cont) return;
+        cont.innerHTML = '<h3>Riepilogo Giocatori</h3><div class="help">Calcolo media voti e goal in corso…</div>';
       
-      try {
-        const [snapRosa, snapPrests] = await Promise.all([
-          get(ref(db, 'rosa')),
-          get(ref(db, 'prestazioni'))
-        ]);
-        const rosa = snapRosa.val() || {};
-        const prestazioniByMatch = snapPrests.val() || {};
-        
-        // 1. Aggrega dati
-        const aggregato = {};
-        Object.keys(rosa).forEach(pid => {
-          aggregato[pid] = { totalVoto: 0, countVoto: 0, goal: 0, nome: `${rosa[pid].nome} ${rosa[pid].cognome}`, numero: rosa[pid].numero };
-        });
+        // Funzione asincrona interna per non bloccare il DOM, ma non usiamo await qui
+        (async () => {
+          try {
+            const [snapRosa, snapPrests] = await Promise.all([
+              get(ref(db, 'rosa')),
+              get(ref(db, 'prestazioni'))
+            ]);
+            const rosa = snapRosa.val() || {};
+            const prestazioniByMatch = snapPrests.val() || {};
+            
+            // 1. Aggrega dati
+            const aggregato = {};
+            Object.keys(rosa).forEach(pid => {
+              aggregato[pid] = { totalVoto: 0, countVoto: 0, goal: 0, nome: `${rosa[pid].nome} ${rosa[pid].cognome}`, numero: rosa[pid].numero, cognome: rosa[pid].cognome };
+            });
 
-        Object.values(prestazioniByMatch).forEach(matchPrests => {
-          Object.entries(matchPrests).forEach(([pid, data]) => {
-            if (aggregato[pid]) {
-              if (data.voto !== null && typeof data.voto === 'number' && !Number.isNaN(data.voto)) {
-                aggregato[pid].totalVoto += data.voto;
-                aggregato[pid].countVoto += 1;
+            Object.values(prestazioniByMatch).forEach(matchPrests => {
+              Object.entries(matchPrests).forEach(([pid, data]) => {
+                if (aggregato[pid]) {
+                  // Assicurati che data.voto sia un numero e non NaN
+                  if (data.voto !== null && typeof data.voto === 'number' && !Number.isNaN(data.voto)) {
+                    aggregato[pid].totalVoto += data.voto;
+                    aggregato[pid].countVoto += 1;
+                  }
+                  aggregato[pid].goal += data.goal || 0;
+                }
+              });
+            });
+
+            // 2. Calcola media e prepara righe
+            const rows = Object.values(aggregato).map(a => {
+              const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
+              return { pid: a.pid, nome: a.nome, cognome: a.cognome, numero: a.numero, 
+                       partite: a.countVoto, 
+                       mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
+                       goal: a.goal };
+            }).sort((a,b)=> {
+              // Ordina per media voto (decrescente), poi goal (decrescente)
+              const am = a.mediaVoto===null ? -1 : a.mediaVoto;
+              const bm = b.mediaVoto===null ? -1 : b.mediaVoto;
+              if (bm !== am) return bm - am;
+              if (b.goal !== a.goal) return b.goal - a.goal;
+              return a.nome.localeCompare(b.nome);
+            });
+
+            // 3. Genera HTML
+            const rowsHtml = rows.map(r => {
+              let mediaVotoDisplay = '—';
+              let bar = '';
+              if (r.mediaVoto !== null) {
+                const votoNum = r.mediaVoto;
+                mediaVotoDisplay = `<b>${votoNum.toFixed(2)}</b>`;
+                // Calcolo barra
+                const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100)));
+                const color = (votoNum >= 7 ? 'green' : (votoNum >= 6 ? 'yellow' : 'red'));
+                bar = `
+                  <div class="voto-bar-container">
+                    <div class="voto-bar ${color}" style="width:${perc}%;"></div>
+                  </div>`;
               }
-              aggregato[pid].goal += data.goal || 0;
-            }
-          });
-        });
-
-        // 2. Calcola media e prepara righe
-        const rows = Object.values(aggregato).map(a => {
-          const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
-          return { pid: a.pid, nome: a.nome, numero: a.numero, 
-                   partite: a.countVoto, 
-                   mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
-                   goal: a.goal };
-        }).sort((a,b)=> {
-          // Ordina per media voto (decrescente), poi goal (decrescente)
-          const am = a.mediaVoto===null ? -1 : a.mediaVoto;
-          const bm = b.mediaVoto===null ? -1 : b.mediaVoto;
-          if (bm !== am) return bm - am;
-          if (b.goal !== a.goal) return b.goal - a.goal;
-          return a.nome.localeCompare(b.nome);
-        });
-
-        // 3. Genera HTML
-        const rowsHtml = rows.map(r => {
-          let mediaVotoDisplay = '—';
-          let bar = '';
-          if (r.mediaVoto !== null) {
-            const votoNum = r.mediaVoto;
-            mediaVotoDisplay = `<b>${votoNum.toFixed(2)}</b>`;
-            // Calcolo barra
-            const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100)));
-            const color = (votoNum >= 7 ? 'green' : (votoNum >= 6 ? 'yellow' : 'red'));
-            bar = `
-              <div class="voto-bar-container">
-                <div class="voto-bar ${color}" style="width:${perc}%;"></div>
-              </div>`;
+              
+              return `
+                <li class="card">
+                  <div class="row" style="justify-content:space-between; align-items:flex-start;">
+                    <div>
+                      <div class="player-title">${r.nome} ${r.numero ? `<span class="pill">#${r.numero}</span>` : ''}</div>
+                      <div class="player-sub">Partite con voto: <b>${r.partite}</b></div>
+                    </div>
+                    <div style="text-align:right;">
+                      <div class="player-title">Voto Medio: ${mediaVotoDisplay}</div>
+                      <div class="player-sub" style="margin-top:6px;">Goal: <b>${r.goal}</b></div>
+                    </div>
+                  </div>
+                  ${bar}
+                </li>
+              `;
+            }).join('');
+            
+            cont.innerHTML = `
+              <h3>Riepilogo Giocatori</h3>
+              <div class="help">Media voto calcolata solo sulle partite con voto assegnato.</div>
+              <ul class="grid cols-2" style="margin-top:14px;">
+                ${rowsHtml}
+              </ul>
+            `;
+          } catch (e) {
+            console.error("Errore caricamento prestazioni aggregate:", e);
+            cont.innerHTML = `<h3>Riepilogo Giocatori</h3><div class="help" style="color:red">Errore durante il caricamento dei dati. Controlla la console per i dettagli.</div>`;
           }
-          
-          return `
-            <li class="card">
-              <div class="row" style="justify-content:space-between; align-items:flex-start;">
-                <div>
-                  <div class="player-title">${r.nome} ${r.cognome} ${r.numero ? `<span class="pill">#${r.numero}</span>` : ''}</div>
-                  <div class="player-sub">Partite con voto: <b>${r.partite}</b></div>
-                </div>
-                <div style="text-align:right;">
-                  <div class="player-title">Voto Medio: ${mediaVotoDisplay}</div>
-                  <div class="player-sub" style="margin-top:6px;">Goal: <b>${r.goal}</b></div>
-                </div>
-              </div>
-              ${bar}
-            </li>
-          `;
-        }).join('');
-        
-        cont.innerHTML = `
-          <h3>Riepilogo Giocatori</h3>
-          <div class="help">Media voto calcolata solo sulle partite con voto assegnato.</div>
-          <ul class="grid cols-2" style="margin-top:14px;">
-            ${rowsHtml}
-          </ul>
-        `;
-      } catch (e) {
-        console.error("Errore caricamento prestazioni aggregate:", e);
-        cont.innerHTML = `<h3>Riepilogo Giocatori</h3><div class="help" style="color:red">Errore durante il caricamento dei dati. Controlla la console per i dettagli.</div>`;
-      }
+        })();
     }
 
     /**
@@ -1838,7 +1843,7 @@
 
   <section id="calendario-section" class="content-section">
     <h2>Calendario & Partite</h2>
-    <div class="help">Lista ordinata dalla partita più recente.</div>
+    <div class="help">Lista ordinata dalla partita più recente. Clicca su "Candidatura" per confermare la disponibilità.</div>
     <ul id="calendario-list" class="grid cols-3"></ul>
   </section>
 
