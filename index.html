@@ -1,14 +1,16 @@
 <!DOCTYPE html>
-
 <html lang="it">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>AC Tuscolano | Gestione Squadra</title>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
-<link href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css" rel="stylesheet"/>
-<style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AC Tuscolano | Gestione Squadra</title>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+  <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css"/>
+
+  <style>
     /* CSS originale (omesso per brevità, resta invariato) */
     :root{
       /* Brand */
@@ -309,7 +311,8 @@
 /* ================================================= */
 
 </style>
-<script type="module">
+
+  <script type="module">
     /* Firebase v9 (modular) */
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, getIdTokenResult, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
@@ -411,7 +414,51 @@
         
         // 5. Logica specifica Admin (Logica invariata)
         if (isAdminTarget) {
-            if(id==='admin-calendario-section'){ window.loadProssimeGiornate(true); }
+            if(id==='admin-calendario-section'){ 
+    // === Helper asincrono: risolve dati giocatore da UID candidatura ===
+    async function resolvePlayerDetailsAsync(uid, rosa, utenti, db){
+      const u = utenti && utenti[uid] ? utenti[uid] : null;
+      if(!u){
+        return null;
+      }
+      const nomeU = (u.nome || '').toString().trim();
+      const cognomeU = (u.cognome || u.Cognome || '').toString().trim();
+      let gid = u.giocatoreId || u.playerId || u.rosaId || null;
+      let fromAutoMatch = false;
+      if(!gid){
+        const nx = nomeU.toLocaleLowerCase('it-IT');
+        const cx = cognomeU.toLocaleLowerCase('it-IT');
+        for(const [pid, pl] of Object.entries(rosa || {})){
+          const rn = (pl.nome||'').toString().trim().toLocaleLowerCase('it-IT');
+          const rc = (pl.cognome||'').toString().trim().toLocaleLowerCase('it-IT');
+          if(rn === nx && rc === cx){
+            gid = pid;
+            fromAutoMatch = true;
+            break;
+          }
+        }
+        if(gid && fromAutoMatch){
+          try{
+            const { ref, update } = await import('https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js');
+            const updates = {}; 
+            updates['/utenti/'+uid+'/giocatoreId'] = gid;
+            await update(ref(db), updates);
+          }catch(e){ console.warn('Auto-link giocatoreId fallito:', e); }
+        }
+      }
+      const base = {
+        id: gid || uid,
+        nome: nomeU,
+        cognome: cognomeU,
+        email: u.email || ''
+      };
+      if(gid && rosa && rosa[gid]){
+        return { ...base, ...rosa[gid] };
+      }
+      return { ...base, ruolo: u.ruolo || 'Ruolo N/D', stato: u.stato || 'N/D' };
+    }
+
+window.loadProssimeGiornate(true); }
             if(id==='admin-inserimento-giornate-section'){ byId("match-data") && $("#match-data").datepicker({ dateFormat:"dd/mm/yy", minDate:0 }); }
             if(id==='admin-candidature-section'){ loadCandidature(); } 
             // AGGIUNTA CHIAMATA PER CRUD DATI E SELETTORE CANDIDATURE
@@ -1828,314 +1875,283 @@
     
   </script>
 </head>
-<body>
-<header>
-<div class="hero" role="banner">
-<img alt="Logo AC Tuscolano" src="Logo.png"/>
-<div class="brand">
-<h1 class="club">AC Tuscolano</h1>
-<p class="tag">Football Club</p>
-</div>
-</div>
-</header>
-<nav aria-label="Navigazione principale">
-<div class="nav-wrap">
-<button aria-current="page" class="tab" data-target="rosa-section" id="rosa-tab" onclick="showPublicSection('rosa-section')">La nostra Rosa</button>
-<button class="tab" data-target="calendario-section" id="calendario-tab" onclick="showPublicSection('calendario-section')">Calendario &amp; Partite</button>
-<button class="tab" data-target="classifica-section" id="classifica-tab" onclick="showPublicSection('classifica-section')">Classifica</button>
-<button class="tab" data-target="statistiche-section" id="statistiche-tab" onclick="showPublicSection('statistiche-section')">Statistiche &amp; Voti</button>
-<button class="tab" data-target="video-section" id="video-tab" onclick="showPublicSection('video-section')">Video</button>
-<a class="tab" href="https://www.romatornei.it/calcio-a-8-over-40-roma-sud" style="text-decoration:none;" target="_blank">Torneo</a>
-<button class="btn" id="auth-toggle-btn" onclick="handleAuthToggle()">Login</button>
-</div>
-</nav>
-<div id="admin-menu">
-<div class="nav-wrap" style="max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px;">
-<button class="tab" data-admin-target="admin-inserimento-giocatori-section" onclick="showAdminSection('admin-inserimento-giocatori-section')">Nuovo Giocatore</button>
-<button class="tab" data-admin-target="admin-inserimento-giornate-section" onclick="showAdminSection('admin-inserimento-giornate-section')">Nuova Partita</button>
-<button class="tab" data-admin-target="admin-calendario-section" onclick="showAdminSection('admin-calendario-section')">Formaz./Voti/Cand.</button>
-<button class="tab" data-admin-target="admin-video-section" onclick="showAdminSection('admin-video-section')">Gestione Video</button>
-<button class="tab" data-admin-target="admin-classifica-section" onclick="showAdminSection('admin-classifica-section')">Aggiorna Classifica</button>
-<button class="tab" data-admin-target="admin-gestione-dati-section" onclick="showAdminSection('admin-gestione-dati-section')">CRUD Dati</button>
-<button class="tab" data-admin-target="admin-utenti-section" onclick="showAdminSection('admin-utenti-section')">Gestione Utenti</button>
-</div>
+<body> 
+<header> 
+  <div class="hero" role="banner"> 
+    <img src="Logo.png" alt="Logo AC Tuscolano" /> 
+    <div class="brand"> 
+      <h1 class="club">AC Tuscolano</h1> 
+      <p class="tag">Football Club</p> 
+    </div> 
+  </div> 
+</header> 
+<nav aria-label="Navigazione principale"> 
+  <div class="nav-wrap"> 
+    <button id="rosa-tab" class="tab" data-target="rosa-section" aria-current="page" onclick="showPublicSection('rosa-section')">La nostra Rosa</button> 
+    <button id="calendario-tab" class="tab" data-target="calendario-section" onclick="showPublicSection('calendario-section')">Calendario & Partite</button> 
+    <button id="classifica-tab" class="tab" data-target="classifica-section" onclick="showPublicSection('classifica-section')">Classifica</button> 
+    <button id="statistiche-tab" class="tab" data-target="statistiche-section" onclick="showPublicSection('statistiche-section')">Statistiche & Voti</button> 
+    <button id="video-tab" class="tab" data-target="video-section" onclick="showPublicSection('video-section')">Video</button> 
+    <a href="https://www.romatornei.it/calcio-a-8-over-40-roma-sud" target="_blank" class="tab" style="text-decoration:none;">Torneo</a> 
+    <button id="auth-toggle-btn" class="btn" onclick="handleAuthToggle()">Login</button> 
+  </div> 
+</nav> 
+<div id="admin-menu"> 
+  <div class="nav-wrap" style="max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px;">
+    <button class="tab" data-admin-target="admin-inserimento-giocatori-section" onclick="showAdminSection('admin-inserimento-giocatori-section')">Nuovo Giocatore</button>
+    <button class="tab" data-admin-target="admin-inserimento-giornate-section" onclick="showAdminSection('admin-inserimento-giornate-section')">Nuova Partita</button>
+    <button class="tab" data-admin-target="admin-calendario-section" onclick="showAdminSection('admin-calendario-section')">Formaz./Voti/Cand.</button>
+    <button class="tab" data-admin-target="admin-video-section" onclick="showAdminSection('admin-video-section')">Gestione Video</button>
+    <button class="tab" data-admin-target="admin-classifica-section" onclick="showAdminSection('admin-classifica-section')">Aggiorna Classifica</button>
+    <button class="tab" data-admin-target="admin-gestione-dati-section" onclick="showAdminSection('admin-gestione-dati-section')">CRUD Dati</button>
+    <button class="tab" data-admin-target="admin-utenti-section" onclick="showAdminSection('admin-utenti-section')">Gestione Utenti</button>
+  </div>
 </div>
 <main>
-<section class="content-section" id="login-section">
-<h2>Login Amministratore</h2>
-<form id="login-form">
-<label>Email</label><input id="login-email" required="" type="email"/>
-<label>Password</label><input id="login-password" required="" type="password"/>
-<div class="actions">
-<button class="btn btn--accent" type="submit">Accedi</button>
-</div>
-</form>
-</section>
-<section class="content-section active" id="rosa-section">
-<h2>La nostra Rosa</h2>
-<div class="help">Lista dei giocatori, ruolo e stato. Ordinati per numero di maglia.</div>
-<ul id="rosa-list"></ul>
-</section>
-<section class="content-section" id="calendario-section">
-<h2>Calendario &amp; Partite</h2>
-<div class="help">Lista ordinata dalla partita più recente. Clicca su "Candidatura" per confermare la disponibilità.</div>
-<ul class="grid cols-3" id="calendario-list"></ul>
-</section>
-<section class="content-section" id="classifica-section">
-<h2>Classifica</h2>
-<div id="classifica-content" style="overflow-x:auto;">
-</div>
-</section>
-<section class="content-section" id="statistiche-section">
-<h2>Prestazioni</h2>
-<h3>Risultati squadra</h3>
-<div class="help">Lista ordinata dalla partita più recente.</div>
-<ul id="statistiche-risultati-list">
-</ul>
-<div id="prestazioni-aggregate-content">
-<h3>Riepilogo Giocatori</h3>
-<div class="help">Calcolo media voti e goal in corso…</div>
-</div>
-</section>
-<section class="content-section" id="video-section">
-<h2>Video Partite Concluse</h2>
-<ul id="video-list-ul" style="display:grid; gap:16px;">
-</ul>
-</section>
-<section class="content-section" id="formazione-pubblica-section">
-<h2>Formazione Ufficiale</h2>
-<div id="formazione-pubblica-content"></div>
-<div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
-</section>
-<section class="content-section" id="prestazioni-partita-section">
-<h2>Prestazioni Partita</h2>
-<div id="prestazioni-partita-content"></div>
-<div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
-</section>
-<section class="content-section" id="admin-inserimento-giocatori-section">
-<h2>Admin · Inserimento giocatori</h2>
-<form id="giocatore-form" onsubmit="window.addPlayer(event)">
-<label>Nome</label><input id="giocatore-nome" required=""/>
-<label>Cognome</label><input id="giocatore-cognome" required=""/>
-<label>Numero Maglia</label><input id="giocatore-numero" max="99" min="1" required="" type="number"/>
-<label>Ruolo</label>
-<select id="giocatore-ruolo" required="">
-<option value="">Seleziona ruolo</option>
-<option>Portiere</option>
-<option>Terzino sinistro</option>
-<option>Terzino destro</option>
-<option>Difensore centrale</option>
-<option>Centrocampista centrale</option>
-<option>Centrocampista sinistro</option>
-<option>Centrocampista destro</option>
-<option>Attaccante centrale</option>
-</select>
-<label>Stato Iniziale</label>
-<select id="giocatore-stato" required="">
-<option>Titolare</option>
-<option>Riserva</option>
-</select>
-<div class="actions">
-<button class="btn btn--accent" type="submit">Aggiungi Giocatore</button>
-</div>
-</form>
-<div class="help" style="margin-top:10px">I nuovi giocatori non appaiono subito nella rosa pubblica finché non ricarichi la pagina o usi la sezione CRUD.</div>
-</section>
-<section class="content-section" id="admin-inserimento-giornate-section">
-<h2>Admin · Inserimento giornate</h2>
-<form id="match-form" onsubmit="window.addMatch(event)">
-<div class="grid cols-2">
-<div><label>Data (gg/mm/aaaa)</label><input id="match-data" required=""/></div>
-<div><label>Ora (hh:mm)</label><input id="match-orario" placeholder="18:00" type="time"/></div>
-</div>
-<label>Avversaria</label><input id="match-avversaria" required=""/>
-<label>Campo di Gioco</label><input id="match-campo" required=""/>
-<label>Partita in Casa/Trasferta</label>
-<select id="match-casa-trasferta" required="">
-<option value="true">Casa</option>
-<option value="false">Trasferta</option>
-</select>
-<div class="actions">
-<button class="btn btn--accent" type="submit">Aggiungi Partita</button>
-</div>
-</form>
-</section>
-<section class="content-section" id="admin-calendario-section">
-<h2>Admin · Gestione Partite</h2>
-<div class="help">Lista ordinata dalla partita più recente. Puoi inserire formazioni, risultati e valutazioni.</div>
-<ul class="grid cols-3" id="admin-calendario-list"></ul>
-</section>
-<section class="content-section" id="admin-classifica-section">
-<h2>Admin · Gestione Classifica</h2>
-<div class="help">Aggiorna la classifica prendendola dal sito esterno romatornei.it e salvala nel database per la visualizzazione pubblica.</div>
-<div class="actions">
-<button class="btn btn--accent" onclick="updateClassificaFromSito()">Aggiorna Classifica Ora</button>
-</div>
-<div id="classifica-risultato-update" style="margin-top:10px;"></div>
-</section>
-<section class="content-section" id="admin-statistiche-section">
-<h2>Admin · Inserimento Risultato/Video</h2>
-<div id="risultato-form-container"></div>
-<div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-</section>
-<section class="content-section" id="admin-formazione-section">
-<h2>Admin · Inserimento Formazione</h2>
-<div id="formazione-form-container"></div>
-<div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-</section>
-<section class="content-section" id="admin-candidature-section">
-<h2>Admin · Gestione Candidature</h2>
-<div id="candidature-list"></div>
-<div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-</section>
-<section class="content-section" id="admin-prestazioni-partita-section">
-<h2>Admin · Valutazione Prestazioni</h2>
-<div id="prestazioni-form-container"></div>
-<div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-</section>
-<section class="content-section" id="admin-gestione-dati-section">
-<h2>Admin · Gestione dati</h2>
-<div class="card" style="margin-bottom:14px">
-<div class="row">
-<button aria-current="page" class="tab" onclick="document.getElementById('crud-giocatori').style.display='block';document.getElementById('crud-partite').style.display='none';document.getElementById('crud-candidature').style.display='none';loadCrudGiocatori()">Giocatori</button>
-<button class="tab" onclick="document.getElementById('crud-giocatori').style.display='none';document.getElementById('crud-partite').style.display='block';document.getElementById('crud-candidature').style.display='none';loadCrudPartite()">Partite</button>
-<button class="tab" onclick="document.getElementById('crud-giocatori').style.display='none';document.getElementById('crud-partite').style.display='none';document.getElementById('crud-candidature').style.display='block'">Candidature (dati)</button>
-</div>
-</div>
-<div id="crud-giocatori" style="display:block">
-<h3>Gestione Giocatori</h3>
-<div style="overflow-x:auto;">
-<table class="table">
-<thead><tr><th>Nome</th><th>Cognome</th><th>Num.</th><th>Ruolo</th><th>Stato</th><th>Pres.</th><th>Azioni</th></tr></thead>
-<tbody id="crud-giocatori-body"></tbody>
-</table>
-<div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva ed Elimina sono placeholder e non funzionano.</div>
-</div>
-</div>
-<div id="crud-partite" style="display:none">
-<h3>Gestione Partite</h3>
-<div style="overflow-x:auto;">
-<table class="table">
-<thead><tr><th>Data</th><th>Ora</th><th>Avversaria</th><th>Risultato</th><th>Campo</th><th>Casa?</th><th>Azioni</th></tr></thead>
-<tbody id="crud-partite-body"></tbody>
-</table>
-<div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva ed Elimina sono placeholder e non funzionano.</div>
-</div>
-</div>
-<div id="crud-candidature" style="display:none">
-<h3>Candidature per Partita</h3>
-<label>Seleziona Partita</label>
-<select id="crud-candidature-select" onchange="loadCandidatureForMatch(this.value)">
-<option value="">Seleziona una partita...</option>
-</select>
-<div class="card" id="crud-candidature-panel" style="margin-top:14px; display:none;">
-<div style="overflow-x:auto;">
-<table class="table">
-<thead><tr><th>Giocatore</th><th>Utente ID</th><th>Candidato</th></tr></thead>
-<tbody id="crud-candidature-body"></tbody>
-</table>
-</div>
-<div class="actions" style="margin-top:14px">
-<button class="btn btn--accent" id="crud-candidature-save">Salva Candidature</button>
-<button class="btn" onclick="closeCandidatureEditor()">Chiudi</button>
-</div>
-</div>
-<div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva e Chiudi sono placeholder e non funzionano.</div>
-</div>
-</section>
-<section class="content-section" id="admin-utenti-section">
-<h2>Admin · Creazione Utente</h2>
-<form id="create-user-form">
-<label>Nome</label><input id="new-nome" required=""/>
-<label>Cognome</label><input id="new-cognome" required=""/>
-<label>Email (per login)</label><input id="new-email" required="" type="email"/>
-<label>Password (temporanea)</label><input id="new-password" required="" type="text"/>
-<div class="actions">
-<button class="btn btn--accent" type="submit">Crea Utente</button>
-</div>
-</form>
-<div class="help">L’admin resta connesso durante la creazione grazie all’autenticazione secondaria.</div>
-</section>
-<section class="content-section" id="admin-video-section">
-<h2>Admin · Gestione Video</h2>
-<div class="help">Inserisci o aggiorna il link YouTube di una partita conclusa.</div>
-<label>Seleziona Partita</label>
-<select id="video-partita-select"></select>
-<label>Link YouTube</label>
-<input id="video-link-input" placeholder="https://www.youtube.com/watch?v=..."/>
-<div class="actions">
-<button class="btn btn--accent" disabled="" id="save-video-btn" type="button">Salva Link Video</button>
-</div>
-</section>
+  <section id="login-section" class="content-section">
+    <h2>Login Amministratore</h2>
+    <form id="login-form">
+      <label>Email</label><input id="login-email" type="email" required />
+      <label>Password</label><input id="login-password" type="password" required />
+      <div class="actions">
+        <button type="submit" class="btn btn--accent">Accedi</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="rosa-section" class="content-section active">
+    <h2>La nostra Rosa</h2>
+    <div class="help">Lista dei giocatori, ruolo e stato. Ordinati per numero di maglia.</div>
+    <ul id="rosa-list"></ul>
+  </section>
+
+  <section id="calendario-section" class="content-section">
+    <h2>Calendario & Partite</h2>
+    <div class="help">Lista ordinata dalla partita più recente. Clicca su "Candidatura" per confermare la disponibilità.</div>
+    <ul id="calendario-list" class="grid cols-3"></ul>
+  </section>
+
+  <section id="classifica-section" class="content-section">
+    <h2>Classifica</h2>
+    <div id="classifica-content" style="overflow-x:auto;"> 
+    </div>
+  </section>
+
+  <section id="statistiche-section" class="content-section">
+    <h2>Prestazioni</h2>
+    <h3>Risultati squadra</h3>
+    <div class="help">Lista ordinata dalla partita più recente.</div>
+    <ul id="statistiche-risultati-list"> 
+    </ul>
+    <div id="prestazioni-aggregate-content">
+      <h3>Riepilogo Giocatori</h3>
+      <div class="help">Calcolo media voti e goal in corso…</div>
+    </div>
+  </section>
+
+  <section id="video-section" class="content-section">
+    <h2>Video Partite Concluse</h2>
+    <ul id="video-list-ul" style="display:grid; gap:16px;"> 
+    </ul>
+  </section>
+
+  <section id="formazione-pubblica-section" class="content-section">
+    <h2>Formazione Ufficiale</h2>
+    <div id="formazione-pubblica-content"></div>
+    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
+  </section>
+
+  <section id="prestazioni-partita-section" class="content-section">
+    <h2>Prestazioni Partita</h2>
+    <div id="prestazioni-partita-content"></div>
+    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
+  </section>
+
+  <section id="admin-inserimento-giocatori-section" class="content-section">
+    <h2>Admin · Inserimento giocatori</h2>
+    <form id="giocatore-form" onsubmit="window.addPlayer(event)">
+      <label>Nome</label><input id="giocatore-nome" required />
+      <label>Cognome</label><input id="giocatore-cognome" required />
+      <label>Numero Maglia</label><input id="giocatore-numero" type="number" min="1" max="99" required />
+      <label>Ruolo</label>
+      <select id="giocatore-ruolo" required>
+        <option value="">Seleziona ruolo</option>
+        <option>Portiere</option>
+        <option>Terzino sinistro</option>
+        <option>Terzino destro</option>
+        <option>Difensore centrale</option>
+        <option>Centrocampista centrale</option>
+        <option>Centrocampista sinistro</option>
+        <option>Centrocampista destro</option>
+        <option>Attaccante centrale</option>
+      </select>
+      <label>Stato Iniziale</label>
+      <select id="giocatore-stato" required>
+        <option>Titolare</option>
+        <option>Riserva</option>
+      </select>
+      <div class="actions">
+        <button type="submit" class="btn btn--accent">Aggiungi Giocatore</button>
+      </div>
+    </form>
+    <div class="help" style="margin-top:10px">I nuovi giocatori non appaiono subito nella rosa pubblica finché non ricarichi la pagina o usi la sezione CRUD.</div>
+  </section>
+
+  <section id="admin-inserimento-giornate-section" class="content-section">
+    <h2>Admin · Inserimento giornate</h2>
+    <form id="match-form" onsubmit="window.addMatch(event)">
+      <div class="grid cols-2">
+        <div><label>Data (gg/mm/aaaa)</label><input id="match-data" required /></div>
+        <div><label>Ora (hh:mm)</label><input id="match-orario" type="time" placeholder="18:00" /></div>
+      </div>
+      <label>Avversaria</label><input id="match-avversaria" required />
+      <label>Campo di Gioco</label><input id="match-campo" required />
+      <label>Partita in Casa/Trasferta</label>
+      <select id="match-casa-trasferta" required>
+        <option value="true">Casa</option>
+        <option value="false">Trasferta</option>
+      </select>
+      <div class="actions">
+        <button type="submit" class="btn btn--accent">Aggiungi Partita</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="admin-calendario-section" class="content-section">
+    <h2>Admin · Gestione Partite</h2>
+    <div class="help">Lista ordinata dalla partita più recente. Puoi inserire formazioni, risultati e valutazioni.</div>
+    <ul id="admin-calendario-list" class="grid cols-3"></ul>
+  </section>
+  
+  <section id="admin-classifica-section" class="content-section">
+    <h2>Admin · Gestione Classifica</h2>
+    <div class="help">Aggiorna la classifica prendendola dal sito esterno romatornei.it e salvala nel database per la visualizzazione pubblica.</div>
+    <div class="actions">
+      <button class="btn btn--accent" onclick="updateClassificaFromSito()">Aggiorna Classifica Ora</button>
+    </div>
+    <div id="classifica-risultato-update" style="margin-top:10px;"></div>
+  </section>
+
+  <section id="admin-statistiche-section" class="content-section">
+    <h2>Admin · Inserimento Risultato/Video</h2>
+    <div id="risultato-form-container"></div>
+    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+  </section>
+
+  <section id="admin-formazione-section" class="content-section">
+    <h2>Admin · Inserimento Formazione</h2>
+    <div id="formazione-form-container"></div>
+    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+  </section>
+
+  <section id="admin-candidature-section" class="content-section">
+    <h2>Admin · Gestione Candidature</h2>
+    <div id="candidature-list"></div>
+    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+  </section>
+  
+  <section id="admin-prestazioni-partita-section" class="content-section">
+    <h2>Admin · Valutazione Prestazioni</h2>
+    <div id="prestazioni-form-container"></div>
+    <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+  </section>
+  
+  <section id="admin-gestione-dati-section" class="content-section">
+    <h2>Admin · Gestione dati</h2>
+    <div class="card" style="margin-bottom:14px">
+      <div class="row">
+        <button class="tab" aria-current="page" onclick="document.getElementById('crud-giocatori').style.display='block';document.getElementById('crud-partite').style.display='none';document.getElementById('crud-candidature').style.display='none';loadCrudGiocatori()">Giocatori</button>
+        <button class="tab" onclick="document.getElementById('crud-giocatori').style.display='none';document.getElementById('crud-partite').style.display='block';document.getElementById('crud-candidature').style.display='none';loadCrudPartite()">Partite</button>
+        <button class="tab" onclick="document.getElementById('crud-giocatori').style.display='none';document.getElementById('crud-partite').style.display='none';document.getElementById('crud-candidature').style.display='block'">Candidature (dati)</button>
+      </div>
+    </div>
+    <div id="crud-giocatori" style="display:block">
+      <h3>Gestione Giocatori</h3>
+      <div style="overflow-x:auto;">
+        <table class="table">
+          <thead><tr><th>Nome</th><th>Cognome</th><th>Num.</th><th>Ruolo</th><th>Stato</th><th>Pres.</th><th>Azioni</th></tr></thead>
+          <tbody id="crud-giocatori-body"></tbody>
+        </table>
+        <div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva ed Elimina sono placeholder e non funzionano.</div>
+      </div>
+    </div>
+    <div id="crud-partite" style="display:none">
+      <h3>Gestione Partite</h3>
+      <div style="overflow-x:auto;">
+        <table class="table">
+          <thead><tr><th>Data</th><th>Ora</th><th>Avversaria</th><th>Risultato</th><th>Campo</th><th>Casa?</th><th>Azioni</th></tr></thead>
+          <tbody id="crud-partite-body"></tbody>
+        </table>
+        <div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva ed Elimina sono placeholder e non funzionano.</div>
+      </div>
+    </div>
+    <div id="crud-candidature" style="display:none">
+      <h3>Candidature per Partita</h3>
+      <label>Seleziona Partita</label>
+      <select id="crud-candidature-select" onchange="loadCandidatureForMatch(this.value)">
+        <option value="">Seleziona una partita...</option>
+      </select>
+      
+      <div id="crud-candidature-panel" class="card" style="margin-top:14px; display:none;">
+        <div style="overflow-x:auto;">
+          <table class="table">
+            <thead><tr><th>Giocatore</th><th>Utente ID</th><th>Candidato</th></tr></thead>
+            <tbody id="crud-candidature-body"></tbody>
+          </table>
+        </div>
+        <div class="actions" style="margin-top:14px">
+          <button id="crud-candidature-save" class="btn btn--accent">Salva Candidature</button>
+          <button class="btn" onclick="closeCandidatureEditor()">Chiudi</button>
+        </div>
+      </div>
+      <div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva e Chiudi sono placeholder e non funzionano.</div>
+    </div>
+  </section>
+
+
+  <section id="admin-utenti-section" class="content-section">
+    <h2>Admin · Creazione Utente</h2>
+    <form id="create-user-form">
+      <label>Nome</label><input id="new-nome" required />
+      <label>Cognome</label><input id="new-cognome" required />
+      <label>Email (per login)</label><input id="new-email" type="email" required />
+      <label>Password (temporanea)</label><input id="new-password" type="text" required />
+      <div class="actions">
+        <button type="submit" class="btn btn--accent">Crea Utente</button>
+      </div>
+    </form>
+    <div class="help">L’admin resta connesso durante la creazione grazie all’autenticazione secondaria.</div>
+  </section>
+
+  <section id="admin-video-section" class="content-section">
+    <h2>Admin · Gestione Video</h2>
+    <div class="help">Inserisci o aggiorna il link YouTube di una partita conclusa.</div>
+    <label>Seleziona Partita</label>
+    <select id="video-partita-select"></select>
+    <label>Link YouTube</label>
+    <input id="video-link-input" placeholder="https://www.youtube.com/watch?v=..." />
+    <div class="actions">
+      <button id="save-video-btn" class="btn btn--accent" type="button" disabled>Salva Link Video</button>
+    </div>
+  </section>
 </main>
-<div aria-label="Navigazione mobile principale" id="bottom-nav" role="navigation">
-<button aria-current="page" class="tab" data-target="rosa-section" id="mobile-rosa-tab" onclick="showPublicSection('rosa-section')">Rosa</button>
-<button class="tab" data-target="calendario-section" id="mobile-calendario-tab" onclick="showPublicSection('calendario-section')">Partite</button>
-<button class="tab" data-target="classifica-section" id="mobile-classifica-tab" onclick="showPublicSection('classifica-section')">Classifica</button>
-<button class="tab" data-target="statistiche-section" id="mobile-statistiche-tab" onclick="showPublicSection('statistiche-section')">Statistiche</button>
-<button class="tab" data-target="video-section" id="mobile-video-tab" onclick="showPublicSection('video-section')">Video</button>
-<button class="btn" id="mobile-auth-toggle-btn" onclick="handleAuthToggle()">Login</button>
+
+<div id="bottom-nav" role="navigation" aria-label="Navigazione mobile principale">
+    <button id="mobile-rosa-tab" class="tab" data-target="rosa-section" aria-current="page" onclick="showPublicSection('rosa-section')">Rosa</button>
+    <button id="mobile-calendario-tab" class="tab" data-target="calendario-section" onclick="showPublicSection('calendario-section')">Partite</button>
+    <button id="mobile-classifica-tab" class="tab" data-target="classifica-section" onclick="showPublicSection('classifica-section')">Classifica</button>
+    <button id="mobile-statistiche-tab" class="tab" data-target="statistiche-section" onclick="showPublicSection('statistiche-section')">Statistiche</button>
+    <button id="mobile-video-tab" class="tab" data-target="video-section" onclick="showPublicSection('video-section')">Video</button>
+    <button id="mobile-auth-toggle-btn" class="btn" onclick="handleAuthToggle()">Login</button>
 </div>
+
 <div id="video-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; align-items: center; justify-content: center; padding: 20px;">
-<div style="background:var(--ink); padding:0; border-radius:var(--radius); width:90%; max-width:800px; position:relative;">
-<button class="btn btn--accent" id="close-video-modal" style="position:absolute; top:-10px; right:-10px; z-index:110; font-size:1.2rem; line-height:1.2;" type="button">X</button>
-<div id="video-iframe-container" style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; border-radius: var(--radius); overflow: hidden;">
-</div>
-</div>
+  <div style="background:var(--ink); padding:0; border-radius:var(--radius); width:90%; max-width:800px; position:relative;">
+    <button id="close-video-modal" class="btn btn--accent" type="button" style="position:absolute; top:-10px; right:-10px; z-index:110; font-size:1.2rem; line-height:1.2;">X</button>
+    <div id="video-iframe-container" style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; border-radius: var(--radius); overflow: hidden;">
+    </div>
+  </div>
 </div>
 <footer>© 2024 AC Tuscolano | Gestione Squadra</footer>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script>
-  var firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "actuscolano-default-rtdb.firebaseapp.com",
-    databaseURL: "https://actuscolano-default-rtdb.firebaseio.com",
-    projectId: "actuscolano-default-rtdb",
-    storageBucket: "actuscolano-default-rtdb.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
-  firebase.initializeApp(firebaseConfig);
-
-  function populatePlayerTable(matchId, containerId) {
-    var db = firebase.database();
-    var candidaturaRef = db.ref('/calendario/' + matchId + '/candidature');
-    var utentiRef = db.ref('/utenti');
-
-    candidaturaRef.once('value').then(function(snapshot) {
-      var candidature = snapshot.val();
-      if (!candidature) return;
-
-      utentiRef.once('value').then(function(userSnap) {
-        var utenti = userSnap.val();
-        var container = document.getElementById(containerId);
-        if (!container) return;
-
-        var table = document.createElement('table');
-        table.style.margin = 'auto';
-        table.style.textAlign = 'center';
-        table.innerHTML = '<tr><th>Nome/Cognome</th><th>Ruolo</th><th>Stato</th></tr>';
-
-        Object.keys(candidature).forEach(function(playerId) {
-          var user = utenti[playerId];
-          var stato = candidature[playerId].stato || 'N/A';
-          if (user) {
-            var row = document.createElement('tr');
-            row.innerHTML = '<td>' + user.nome + ' ' + user.cognome + '</td><td>' + (user.ruolo || 'N/A') + '</td><td>' + stato + '</td>';
-            table.appendChild(row);
-          }
-        });
-
-        container.appendChild(table);
-      });
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    populatePlayerTable('OcHH1dWuePLDYRvo8Iy', 'match-OcHH1dWuePLDYRvo8Iy');
-  });
-</script>
 </body>
 </html>
