@@ -345,6 +345,7 @@
     /* Helpers */
     const byId = (id)=>document.getElementById(id);
     const v = (id)=>byId(id)?.value || '';
+    // escapeHtml ora è più robusto, necessario per gli argomenti onclick che contengono entità HTML (es. '->&#39;)
     const escapeHtml=(s='')=>s.toString().replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
     // ** ARRAY SEZIONI AGGIORNATI E COMPLETI **
@@ -428,7 +429,7 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Re-map the old functions to the new unified function
+    // Re-map the old functions to the new unified function (FIX: Must be attached to window to work with inline onclicks)
     window.showPublicSection = (id) => window.switchSection(id, false);
     window.showAdminSection = (id) => {
         if(!isAdmin) return showLogin();
@@ -802,7 +803,7 @@
                   <strong>vs ${avversario} - ${p.risultato}</strong><br>
                   <span class="player-sub">${dataOra} | ${campo}</span>
                 </div>
-                <button class="btn btn--accent" onclick="window.openVideoModal('${escapeHtml(p.linkVideo)}')">Guarda Video</button>
+                <button class="btn btn--accent" onclick="openVideoModal('${escapeHtml(p.linkVideo)}')">Guarda Video</button>
               </li>
             `;
           }
@@ -964,10 +965,17 @@
         // Prestazioni Button: active only if result is valid
         let prestazioniBtn = '';
         if (risultatoValido) {
-          prestazioniBtn = `<button class="btn" onclick="window.showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
+          prestazioniBtn = `<button class="btn" onclick="showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
         } else {
           prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
         }
+        
+        // ** FIX: Preparazione della stringa JSON per l'Admin Button (SyntaxError Fix) **
+        // Utilizzo m.formazioni (struttura corretta)
+        const jsonFormazioni = JSON.stringify(m.formazioni || null); 
+        // Escape la stringa JSON per inserirla in un attributo HTML (es: " -> &quot;)
+        const escapedJsonFormazioni = escapeHtml(jsonFormazioni);
+
 
         // *** LOGICA PER LISTA CANDIDATI PUBBLICA (FIX IMPLEMENTATO QUI) ***
         let candidatiListHtml = '';
@@ -1075,13 +1083,13 @@
             <div class="actions" style="margin:0; flex:0 0 auto; display:flex; flex-direction:column; gap:6px;">
               ${asAdmin ? `
                 <button class="btn btn--admin" onclick="showResultForm('${matchId}','${escapeHtml(m.avversaria)}')">Risultato/Video</button>
-                <button class="btn btn--admin" onclick="showFormazioneForm('${matchId}','${escapeHtml(m.avversaria)}', ${JSON.stringify(m.formazione || null)})">Formazione/Sost.</button>
+                <button class="btn btn--admin" onclick="showFormazioneForm('${matchId}','${escapeHtml(m.avversaria)}', '${escapedJsonFormazioni}')">Formazione/Sost.</button>
                 <button class="btn btn--admin" onclick="showCandidatureEditor('${matchId}','${escapeHtml(m.avversaria)}')">Candidature (${candCount})</button>
                 ${risultatoValido ? `<button class="btn btn--admin" onclick="showValutazionePartitaForm('${matchId}','${escapeHtml(m.avversaria)}')">Valuta Prestazioni</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Valuta Prestazioni</button>`}
                 <button class="btn" onclick="crudDeletePartita('${matchId}')">Elimina Partita</button>
               ` : `
                 ${candButton}
-                ${isPublished && !risultatoValido ? `<button class="btn" onclick="window.showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione Pubblica</button>` : (isPublished && risultatoValido ? `<button class="btn" onclick="window.showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Formazione</button>`)}
+                ${isPublished && !risultatoValido ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione Pubblica</button>` : (isPublished && risultatoValido ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Formazione</button>`)}
                 ${prestazioniBtn}
               `}
             </div>
@@ -1240,7 +1248,7 @@
                 const votoNum = r.mediaVoto;
                 mediaVotoDisplay = `<b>${votoNum.toFixed(2)}</b>`;
                 // Calcolo barra
-                const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100));
+                const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100)));
                 const color = (votoNum >= 7 ? 'green' : (votoNum >= 6 ? 'yellow' : 'red'));
                 bar = `
                   <div class="voto-bar-container">
@@ -1667,28 +1675,32 @@
     /**
      * FIX: Carica dati esistenti per il form Formazione/Sostituzioni.
      */
-    window.showFormazioneForm = async function(matchId, avv, formazione) {
+    window.showFormazioneForm = async function(matchId, avv, formazioneJsonString) { // Accetta la stringa JSON escapata
       window.showAdminSection('admin-formazione-section');
       const container = byId('formazione-form-container');
       container.innerHTML = 'Caricamento dati formazione...';
       
+      const f = JSON.parse(formazioneJsonString) || {}; // Fa il parse della stringa JSON
+      const titolariIniziali = f['0']?.formazione || {};
+      const panchinaIds = f['0']?.panchina || [];
+      
       const snap = await get(ref(db, `calendario/${matchId}`));
       const m = snap.val() || {};
-      const f = m.formazioni?.['0'] || {}; // Assume '0' is the initial formation
+      const sostituzioni = m.sostituzioni || [];
 
       let titolariInfo = 'Nessun titolare salvato.';
-      if (f.formazione && Object.keys(f.formazione).length > 0) {
-        titolariInfo = 'Titolari già salvati per: ' + Object.keys(f.formazione).map(r => `<b>${r}</b>`).join(', ');
+      if (titolariIniziali && Object.keys(titolariIniziali).length > 0) {
+        titolariInfo = 'Titolari già salvati per: ' + Object.keys(titolariIniziali).map(r => `<b>${r}</b>`).join(', ');
       }
       
       let panchinaInfo = 'Nessuna panchina salvata.';
-      if (f.panchina && f.panchina.length > 0) {
-        panchinaInfo = `Panchina salvata con <b>${f.panchina.length}</b> giocatori.`;
+      if (panchinaIds && panchinaIds.length > 0) {
+        panchinaInfo = `Panchina salvata con <b>${panchinaIds.length}</b> giocatori.`;
       }
 
       let sostituzioniInfo = 'Nessuna sostituzione salvata.';
-      if (m.sostituzioni && m.sostituzioni.length > 0) {
-        sostituzioniInfo = `<b>${m.sostituzioni.length}</b> sostituzioni salvate.`;
+      if (sostituzioni && sostituzioni.length > 0) {
+        sostituzioniInfo = `<b>${sostituzioni.length}</b> sostituzioni salvate.`;
       }
       
       container.innerHTML = `
