@@ -414,40 +414,7 @@
         
         // 5. Logica specifica Admin (Logica invariata)
         if (isAdminTarget) {
-            if(id==='admin-calendario-section'){ 
-    // === Helper asincrono candidature: UID → utente → (match rosa) ===
-    async function resolvePlayerDetailsAsync(uid, rosa, utenti, db){
-      const u = utenti && utenti[uid] ? utenti[uid] : null;
-      if(!u){ return null; }
-      const nomeU = (u.nome || '').toString().trim();
-      const cognomeU = (u.cognome || u.Cognome || '').toString().trim();
-      let gid = u.giocatoreId || u.playerId || u.rosaId || null;
-      let fromAuto = false;
-      if(!gid){
-        const nx = nomeU.toLocaleLowerCase('it-IT');
-        const cx = cognomeU.toLocaleLowerCase('it-IT');
-        for(const [pid, pl] of Object.entries(rosa || {})){
-          const rn = (pl.nome||'').toString().trim().toLocaleLowerCase('it-IT');
-          const rc = (pl.cognome||'').toString().trim().toLocaleLowerCase('it-IT');
-          if(rn === nx && rc === cx){ gid = pid; fromAuto = true; break; }
-        }
-        if(gid && fromAuto){
-          try{
-            const { ref, update } = await import('https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js');
-            const updates = {}; 
-            updates['/data/utenti/'+uid+'/giocatoreId'] = gid;
-            await update(ref(db), updates);
-          }catch(e){ console.warn('Auto-link giocatoreId fallito:', e); }
-        }
-      }
-      const base = { id: gid || uid, nome: nomeU, cognome: cognomeU, email: u.email || '' };
-      if(gid && rosa && rosa[gid]){
-        return { ...base, ...rosa[gid] };
-      }
-      return { ...base, ruolo: u.ruolo || 'Ruolo N/D', stato: u.stato || 'N/D' };
-    }
-
-window.loadProssimeGiornate(true); }
+            if(id==='admin-calendario-section'){ window.loadProssimeGiornate(true); }
             if(id==='admin-inserimento-giornate-section'){ byId("match-data") && $("#match-data").datepicker({ dateFormat:"dd/mm/yy", minDate:0 }); }
             if(id==='admin-candidature-section'){ loadCandidature(); } 
             // AGGIUNTA CHIAMATA PER CRUD DATI E SELETTORE CANDIDATURE
@@ -627,6 +594,21 @@ window.loadProssimeGiornate(true); }
           // Standard Romatornei Columns (approx): 0:Pos, 1:Squadra, 2:Punti, 3:Giocate, 4:V, 5:N, 6:P, 7:F, 8:S, 9:DR
           
           let tableBodyHtml = '';
+
+          // *** INIZIO FIX 1 (Classifica) ***
+          // Helper per unire gli stili ed evitare attributi 'style' duplicati
+          const getCellStyle = (isTuscolano, baseStyle = "") => {
+              let tuscolanoStyle = '';
+              if (isTuscolano) {
+                  // Stile Tuscolano (con centratura richiesta)
+                  tuscolanoStyle = 'background:var(--yellow) !important; color:var(--ink) !important; font-weight:900; text-align:center !important;';
+              }
+              // Unisce lo stile Tuscolano (se presente) e lo stile di base della cella
+              const finalStyle = [tuscolanoStyle, baseStyle].filter(Boolean).join('; ');
+              return finalStyle ? ` style="${finalStyle}"` : '';
+          };
+          // *** FINE FIX 1 (Classifica) ***
+
           rows.forEach((tr, index) => {
               const cells = Array.from(tr.children);
               
@@ -649,32 +631,26 @@ window.loadProssimeGiornate(true); }
               // DR (Differenza Reti) è l'ultima cella in genere (indice 9)
               const dr = cells[cells.length - 1]?.textContent.trim() || '0'; 
               
-              // 2. Stile per evidenziare AC Tuscolano (FIX: Regola di evidenziazione rafforzata, applicata alle TD)
-              // La condizione controlla se il nome contiene "TUSCOLANO" (più robusto)
+              // 2. Stile per evidenziare AC Tuscolano
               const isTuscolano = squadra.toUpperCase().includes('TUSCOLANO');
-              const tuscolanoStyle = isTuscolano 
-                  ? 'background:var(--yellow) !important; color:var(--ink) !important; font-weight:900;' 
-                  : '';
               
               // Applica il colore zebra solo se non è AC Tuscolano
               const rowStyle = index % 2 === 1 && !isTuscolano ? ' style="background:#f8f8f8;"' : '';
-              
-              // Stile per le singole celle (se Tuscolano)
-              const cellStyle = isTuscolano ? ` style="${tuscolanoStyle}"` : '';
 
-
+              // *** MODIFICA FIX 1 (Classifica): Applica getCellStyle alle <td> ***
               tableBodyHtml += `
                   <tr${rowStyle}>
-                      <td${cellStyle} style="text-align:center;">${pos}</td>
-                      <td${cellStyle} style="font-weight:700;">${escapeHtml(squadra)}</td>
-                      <td${cellStyle} style="text-align:center;"><b>${punti}</b></td>
-                      <td${cellStyle} style="text-align:center; color:var(--ink-sub);">${giocate}</td>
-                      <td${cellStyle} style="text-align:center; color:#0e7a0d;">${vinte}</td>
-                      <td${cellStyle} style="text-align:center;">${pareggiate}</td>
-                      <td${cellStyle} style="text-align:center; color:var(--red);">${perse}</td>
-                      <td${cellStyle} style="text-align:center;">${dr}</td>
+                      <td${getCellStyle(isTuscolano, "text-align:center;")}>${pos}</td>
+                      <td${getCellStyle(isTuscolano, isTuscolano ? "" : "font-weight:700;")}>${escapeHtml(squadra)}</td>
+                      <td${getCellStyle(isTuscolano, "text-align:center;")}><b>${punti}</b></td>
+                      <td${getCellStyle(isTuscolano, "text-align:center; color:var(--ink-sub);")}>${giocate}</td>
+                      <td${getCellStyle(isTuscolano, "text-align:center; color:#0e7a0d;")}>${vinte}</td>
+                      <td${getCellStyle(isTuscolano, "text-align:center;")}>${pareggiate}</td>
+                      <td${getCellStyle(isTuscolano, "text-align:center; color:var(--red);")}>${perse}</td>
+                      <td${getCellStyle(isTuscolano, "text-align:center;")}>${dr}</td>
                   </tr>
               `;
+              // *** FINE MODIFICA FIX 1 (Classifica) ***
           });
           
           const tableHtml = `
@@ -955,17 +931,24 @@ window.loadProssimeGiornate(true); }
 
     /**
      * FUNZIONE loadProssimeGiornate (AGGIORNATA PER LISTA CANDIDATI)
-     * IMPLEMENTAZIONE FIX: Struttura più chiara per l'elenco dei candidati. (FIX RICHIESTO)
+     * IMPLEMENTAZIONE FIX: Logica di join /candidature -> /utenti -> /rosa (FIX RICHIESTO)
      */
     window.loadProssimeGiornate = async function(asAdmin){
       const listId = asAdmin ? 'admin-calendario-list' : 'calendario-list';
       const ul = byId(listId); if(!ul) return; ul.innerHTML='';
-      const [snapCalendar, snapRosa] = await Promise.all([
+
+      // *** MODIFICA: Aggiunto snapUtenti ***
+      const [snapCalendar, snapRosa, snapUtenti] = await Promise.all([
           get(ref(db,'calendario')),
-          get(ref(db, 'rosa')) // Fetch player data for candidate list
+          get(ref(db, 'rosa')),
+          get(ref(db, 'utenti')) // <-- NUOVO: Carica dati utenti
       ]);
       const val = snapCalendar.val() || {};
       const rosa = snapRosa.val() || {}; 
+      const utenti = snapUtenti.val() || {}; // <-- NUOVO: Dati utenti
+      
+      // Trasformo la rosa in un array [ { ...playerData } ] per cercare più facilmente
+      const rosaArray = Object.values(rosa); 
       
       let entries = Object.entries(val);
       const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
@@ -973,11 +956,44 @@ window.loadProssimeGiornate(true); }
       entries.sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
       if(!entries.length){ ul.innerHTML = '<div class="help">Nessuna partita a calendario.</div>'; return; }
       ul.className='grid cols-3';
+      
       for(const [matchId,m] of entries){
         const candSnap = await get(ref(db,`calendario/${matchId}/candidature`));
         const cand = candSnap.val() || {};
-        const candidatiIds = Object.keys(cand).filter(pid => cand[pid] === true);
-        const candCount = candidatiIds.length;
+        
+        // *** INIZIO FIX (Logica Join) ***
+        
+        // 1. Estrae gli Auth UID dei candidati (le chiavi di 'cand')
+        const candidatiAuthUIDs = Object.keys(cand).filter(uid => cand[uid] === true);
+        const candCount = candidatiAuthUIDs.length;
+
+        // 2. Mappa gli Auth UID ai giocatori della rosa tramite /utenti e join per Nome/Cognome
+        const candidatiTrovati = [];
+        
+        for (const authUid of candidatiAuthUIDs) {
+            const utente = utenti[authUid]; // Prende l'utente da /utenti/{authUid}
+            
+            if (utente && utente.nome && utente.cognome) {
+                // 3. Cerca in /rosa usando nome e cognome da /utenti
+                const nomeUtente = utente.nome;
+                const cognomeUtente = utente.cognome;
+                
+                // Cerca nel nostro array della rosa
+                const giocatoreInRosa = rosaArray.find(p => 
+                    p.nome === nomeUtente && p.cognome === cognomeUtente
+                );
+                
+                if (giocatoreInRosa) {
+                    candidatiTrovati.push(giocatoreInRosa); // Aggiunge l'intero oggetto giocatore da /rosa
+                }
+            }
+        }
+        
+        // 4. Ordina i giocatori trovati per numero
+        const sortedCandidati = candidatiTrovati.sort((a, b) => (a.numero || 0) - (b.numero || 0));
+        
+        // *** FINE FIX (Logica Join) ***
+
         const isPublished = m.formazionePubblicata === true;
         const matchDate = toDate(m.data);
         const isPast = matchDate < today;
@@ -1003,28 +1019,16 @@ window.loadProssimeGiornate(true); }
           prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
         }
         
-        // ** FIX: Preparazione della stringa JSON per l'Admin Button (SyntaxError Fix) **
-        // Utilizzo m.formazioni (struttura corretta)
+        // ** Preparazione della stringa JSON per l'Admin Button **
         const jsonFormazioni = JSON.stringify(m.formazioni || null); 
-        // Escape la stringa JSON per inserirla in un attributo HTML (es: " -> &quot;)
         const escapedJsonFormazioni = escapeHtml(jsonFormazioni);
 
 
         // *** LOGICA PER LISTA CANDIDATI PUBBLICA (FIX IMPLEMENTATO QUI) ***
         let candidatiListHtml = '';
         if (!asAdmin && !risultatoValido) { // Se è sezione pubblica e NON c'è risultato
-            if (candCount > 0) {
-                // Prepara la lista dettagliata dei candidati
-                const sortedCandidati = candidatiIds.map(pid => rosa[pid] ? { ...rosa[pid], id: pid } : null)
-                    .filter(p => p !== null)
-                    .sort((a, b) => (a.numero || 0) - (b.numero || 0));
+            if (candCount > 0) { // Mostra il box se ci sono candidature, anche se non trovate
                 
-                // --- DEBUG LOG ---
-                if (sortedCandidati.length === 0) {
-                    console.warn(`Partita ${matchId} (vs ${m.avversaria}): Trovate ${candCount} candidature, ma 0 giocatori corrispondenti nella Rosa. Controllare consistenza dati.`);
-                }
-                // --- FINE DEBUG LOG ---
-
                 let playersHtml = '<ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:2px; font-size:0.9rem;">';
                 
                 // Intestazione per Nome/Ruolo/Stato
@@ -1038,6 +1042,7 @@ window.loadProssimeGiornate(true); }
 
                 if (sortedCandidati.length > 0) {
                     playersHtml += sortedCandidati.map(p => {
+                        // 'p' ora è l'oggetto completo da /rosa
                         const nome = escapeHtml(p.nome || '?');
                         const cognome = escapeHtml(p.cognome || '?');
                         const ruolo = escapeHtml(p.ruolo || 'Ruolo N/D');
@@ -1055,8 +1060,18 @@ window.loadProssimeGiornate(true); }
                             </li>
                         `;
                     }).join('');
-                } else {
-                     playersHtml += `<li style="padding:4px 0; color:var(--red); font-weight:600;">Nessun giocatore candidabile trovato nella rosa con l'ID corrispondente.</li>`;
+                } 
+                
+                // Mostra un avviso se il numero di candidati (candCount) non corrisponde
+                // al numero di giocatori trovati in rosa (sortedCandidati.length)
+                if (candCount > sortedCandidati.length) {
+                     const mancanti = candCount - sortedCandidati.length;
+                     playersHtml += `<li style="padding:4px 0; color:var(--red); font-weight:600;">${mancanti} candidati non trovati in /rosa (errore join Nome/Cognome).</li>`;
+                }
+
+                if (candCount > 0 && sortedCandidati.length === 0) {
+                     // Caso specifico: 3 candidati, 0 trovati
+                     playersHtml += `<li style="padding:4px 0; color:var(--red); font-weight:600;">Nessun candidato trovato in /rosa. Controllare /utenti e /rosa.</li>`;
                 }
                 
                 playersHtml += '</ul>';
@@ -1067,11 +1082,12 @@ window.loadProssimeGiornate(true); }
                         ${playersHtml}
                     </div>
                 `;
-            } else {
+            } else { // candCount === 0
                 candidatiListHtml = `<div class="pill" style="margin-top:8px; font-size:0.85rem;">Nessuna disponibilità confermata (0).</div>`;
             }
         }
         // *** FINE LOGICA PER LISTA CANDIDATI PUBBLICA (FIX IMPLEMENTATO QUI) ***
+
 
         // NUOVA LOGICA: Calcolo Esito per display in Calendario
         let esitoPill = '';
@@ -1622,6 +1638,7 @@ window.loadProssimeGiornate(true); }
 
     /**
      * FIX: Carica la lista delle candidature per una partita (Admin - Gestione Dati)
+     * NOTA: Questa funzione assume che /rosa/{pid}/uid esista e sia l'Auth UID.
      */
     window.loadCandidatureForMatch = async function(matchId){
       const tbody = byId('crud-candidature-body');
@@ -1643,19 +1660,21 @@ window.loadProssimeGiornate(true); }
         ]);
         
         const rosa = snapRosa.val() || {};
-        const candidature = snapCand.val() || {};
+        const candidature = snapCand.val() || {}; // Questo è { AuthUID_123: true }
         
         const rows = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
         
-        let html = rows.map(([pid, p]) => {
-          const isCandidato = candidature[pid] === true; // Assuming candidature is a map of {pid: true/false}
+        let html = rows.map(([pid, p]) => { // pid = chiave push di rosa; p = dati giocatore rosa
+          // *** Controlla la candidatura usando l'UID del giocatore (p.uid) ***
+          // p.uid è l'Auth UID memorizzato nel record della rosa
+          const isCandidato = p.uid && candidature[p.uid] === true; 
           return `
             <tr>
               <td>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)} (#${p.numero})</td>
               <td>${p.uid || 'N/D'}</td>
               <td>
-                <input type="checkbox" id="cand-${pid}" data-id="${pid}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;">
-                <label for="cand-${pid}" style="display:inline; font-weight:400; margin-left:8px;">Candidato</label>
+                <input type="checkbox" id="cand-${pid}" data-uid="${p.uid || ''}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;" ${!p.uid ? 'disabled' : ''}>
+                <label for="cand-${pid}" style="display:inline; font-weight:400; margin-left:8px;">Candidato ${!p.uid ? '(UID mancante)' : ''}</label>
               </td>
             </tr>
           `;
@@ -1810,6 +1829,7 @@ window.loadProssimeGiornate(true); }
     
     /**
      * FIX: Carica dati esistenti per il form Gestione Candidature (Admin Calendario).
+     * NOTA: Questa funzione assume che /rosa/{pid}/uid esista e sia l'Auth UID.
      */
     window.showCandidatureEditor = async function(matchId, avv) {
         window.showAdminSection('admin-candidature-section');
@@ -1822,18 +1842,19 @@ window.loadProssimeGiornate(true); }
         ]);
         
         const rosa = snapRosa.val() || {};
-        const candidature = snapCand.val() || {};
+        const candidature = snapCand.val() || {}; // { AuthUID_123: true }
         
         const rows = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
         
         let listHtml = rows.map(([pid, p]) => {
-          const isCandidato = candidature[pid] === true;
+          // *** Controlla la candidatura usando l'UID del giocatore (p.uid) ***
+          const isCandidato = p.uid && candidature[p.uid] === true;
           return `
             <li class="card" style="display:flex; justify-content:space-between; align-items:center;">
               <div><b>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)}</b> (#${p.numero})</div>
               <div>
-                <input type="checkbox" id="cand-edit-${pid}" data-id="${pid}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;">
-                <label for="cand-edit-${pid}" style="display:inline; font-weight:400; margin-left:8px;">Candidato</label>
+                <input type="checkbox" id="cand-edit-${pid}" data-uid="${p.uid || ''}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;" ${!p.uid ? 'disabled' : ''}>
+                <label for="cand-edit-${pid}" style="display:inline; font-weight:400; margin-left:8px;">Candidato ${!p.uid ? '(UID mancante)' : ''}</label>
               </div>
             </li>
           `;
