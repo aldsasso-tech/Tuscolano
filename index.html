@@ -1,16 +1,14 @@
 <!DOCTYPE html>
+
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AC Tuscolano | Gestione Squadra</title>
-
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  
-  <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
-  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css"/>
-
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>AC Tuscolano | Gestione Squadra</title>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
+<link href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css" rel="stylesheet"/>
+<style>
     /* CSS originale (omesso per brevità, resta invariato) */
     :root{
       /* Brand */
@@ -48,7 +46,7 @@
       box-shadow:0 6px 16px rgba(218,0,0,.15);
     }
     .hero{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:14px 16px}
-    .hero img{width:56px;height:56px;object-fit:contain;} /* FIX 1: RIMOSSO FILTRO */
+    .hero img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
     .brand{display:flex;flex-direction:column}
     .brand .club{margin:0;line-height:1.05;font-weight:900;letter-spacing:.2px;font-size:clamp(22px,3vw,34px)}
     .brand .tag{margin:0;opacity:.92;font-weight:600;font-size:clamp(12px,2vw,14px)}
@@ -311,8 +309,7 @@
 /* ================================================= */
 
 </style>
-
-  <script type="module">
+<script type="module">
     /* Firebase v9 (modular) */
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, getIdTokenResult, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
@@ -647,17 +644,17 @@
           const tableHtml = `
               <div class="help">Classifica aggiornata da dati esterni. L'AC Tuscolano è evidenziata.</div>
               <div style="overflow-x:auto">
-                  <table class="table" style="width:100%; border-collapse:collapse; margin-top:8px; font-size:14px; table-layout:fixed;"> /* FIX 2.1: table-layout:fixed; */
+                  <table class="table" style="width:100%; border-collapse:collapse; margin-top:8px; font-size:14px; table-layout:auto;">
                       <thead>
                           <tr style="background:var(--ink);"> 
-                              <th style="width:5%; text-align:center; padding:8px 4px; color:var(--white); vertical-align:middle;">Pos</th> /* FIX 2.2: vertical-align:middle; */
-                              <th style="width:35%; padding:8px 4px; text-align:left; color:var(--white); vertical-align:middle;">Squadra</th> /* FIX 2.2: vertical-align:middle; */
-                              <th style="width:10%; text-align:center; padding:8px 4px; color:var(--white); vertical-align:middle;">Pti</th> /* FIX 2.2: vertical-align:middle; */
-                              <th style="width:10%; text-align:center; color:var(--white); vertical-align:middle;">G</th> /* FIX 2.2: vertical-align:middle; */
-                              <th style="width:10%; text-align:center; color:var(--white); vertical-align:middle;">V</th> /* FIX 2.2: vertical-align:middle; */
-                              <th style="width:10%; text-align:center; color:var(--white); vertical-align:middle;">N</th> /* FIX 2.2: vertical-align:middle; */
-                              <th style="width:10%; text-align:center; color:var(--white); vertical-align:middle;">P</th> /* FIX 2.2: vertical-align:middle; */
-                              <th style="width:10%; text-align:center; color:var(--white); vertical-align:middle;">DR</th> /* FIX 2.2: vertical-align:middle; */
+                              <th style="width:5%; text-align:center; padding:8px 4px; color:var(--white);">Pos</th>
+                              <th style="width:35%; padding:8px 4px; text-align:left; color:var(--white);">Squadra</th>
+                              <th style="width:10%; text-align:center; padding:8px 4px; color:var(--white);">Pti</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">G</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">V</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">N</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">P</th>
+                              <th style="width:10%; text-align:center; color:var(--white);">DR</th>
                           </tr>
                       </thead>
                       <tbody>
@@ -777,297 +774,416 @@
       const ul = byId('video-list-ul');
       if (!ul) return;
       ul.innerHTML = '<li>Caricamento video...</li>';
-      try { 
-        const snapshot = await get(ref(db, 'calendario')); // Usa 'calendario' come il resto del tuo codice 
-        const partite = snapshot.val() || {}; 
-        let html = ''; 
-        const sortedKeys = Object.keys(partite).sort((a, b) => { 
-            const toDate = (d)=>{ 
-                const [dd,mm,yyyy] = String(d||'').split('/'); 
-                return new Date(`${mm}/${dd}/${yyyy}`); 
-            }; 
-            const dateA = toDate(partite[a].data); 
-            const dateB = toDate(partite[b].data); 
-            return dateB - dateA; 
-        }); 
-        sortedKeys.forEach(key => { 
-            const p = partite[key]; 
-            if (p.risultato && p.risultato !== 'N/D' && p.linkVideo) { 
-                const dataOra = p.data && p.orario ? `${p.data} ${p.orario}` : 'Data/Ora sconosciuta'; 
-                const campo = p.campo ? escapeHtml(p.campo) : 'Campo sconosciuto'; 
-                const avversario = p.avversaria ? escapeHtml(p.avversaria) : 'Avversario N/D'; 
-                const risultato = p.risultato ? p.risultato : 'N/D'; 
-                const isWin = risultato.split('-').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)).length===2 && parseInt(risultato.split('-')[0].trim()) > parseInt(risultato.split('-')[1].trim());
-                const isDraw = risultato.split('-').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)).length===2 && parseInt(risultato.split('-')[0].trim()) === parseInt(risultato.split('-')[1].trim());
-                const pillColor = isWin ? 'background:#0e7a0d;' : (isDraw ? 'background:#ccc;' : 'background:var(--red);');
 
-                html += ` 
-                    <li class="card" style="display:flex; flex-direction:column; justify-content:space-between; cursor:pointer;" onclick="openVideoModal('${p.linkVideo}')"> 
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start;"> 
-                            <h4 style="margin:0; line-height:1.2;">vs ${avversario}</h4> 
-                            <span class="pill" style="${pillColor} color:#fff; font-weight:800; font-size:1.1rem; line-height:1; padding:4px 8px;">${risultato}</span> 
-                        </div> 
-                        <div style="margin-top:8px;"> 
-                            <div class="help">${dataOra} (${campo})</div> 
-                            <div style="margin-top:4px; font-weight:700; color:var(--red); display:flex; align-items:center; gap:4px;"> 
-                                <span style="font-size:1.2rem;">▶️</span> Guarda il Video 
-                            </div> 
-                        </div> 
-                    </li> 
-                `; 
-            } 
-        }); 
-        ul.className='grid cols-3';
-        ul.innerHTML = html.length > 0 ? html : '<div class="help">Nessun video di partita disponibile.</div>'; 
-      } catch(error) { 
-        console.error("Errore caricamento video list:", error); 
-        ul.innerHTML = '<li style="color:red">Errore caricamento video.</li>'; 
-      } 
+      try {
+        const snapshot = await get(ref(db, 'calendario')); // Usa 'calendario' come il resto del tuo codice
+        const partite = snapshot.val() || {};
+        let html = '';
+
+        const sortedKeys = Object.keys(partite).sort((a, b) => {
+          const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
+          const dateA = toDate(partite[a].data);
+          const dateB = toDate(partite[b].data);
+          return dateB - dateA;
+        });
+
+        sortedKeys.forEach(key => {
+          const p = partite[key];
+          if (p.risultato && p.risultato !== 'N/D' && p.linkVideo) {
+            const dataOra = p.data && p.orario ? `${p.data} ${p.orario}` : 'Data/Ora sconosciuta';
+            const campo = p.campo ? escapeHtml(p.campo) : 'Campo sconosciuto';
+            const avversario = p.avversaria ? escapeHtml(p.avversaria) : 'Avversario sconosciuto';
+
+            html += `
+              <li class="card" style="margin-bottom:12px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px;">
+                <div>
+                  <strong>vs ${avversario} - ${p.risultato}</strong><br>
+                  <span class="player-sub">${dataOra} | ${campo}</span>
+                </div>
+                <button class="btn btn--accent" onclick="openVideoModal('${escapeHtml(p.linkVideo)}')">Guarda Video</button>
+              </li>
+            `;
+          }
+        });
+
+        ul.innerHTML = html || '<li>Nessuna partita conclusa con video inserito.</li>';
+      } catch(error) {
+        console.error("Errore caricamento lista video:", error);
+        ul.innerHTML = '<li>Errore durante il caricamento dei video.</li>';
+      }
     };
     
+    /* FUNZIONI ADMIN VIDEO */
+
+    // Carica le partite per il menu a tendina Admin (solo quelle concluse)
+    const loadPartitePerVideoAdmin = async () => {
+      const select = byId('video-partita-select');
+      if (!select) return;
+      select.innerHTML = '<option value="">Caricamento...</option>';
+      byId('video-link-input').value = '';
+      byId('save-video-btn').disabled = true;
+
+      try {
+        const snapshot = await get(ref(db, 'calendario'));
+        const partite = snapshot.val() || {};
+        let options = '<option value="">Seleziona una partita conclusa</option>';
+
+        const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
+        
+        const sortedKeys = Object.keys(partite).sort((a, b) => toDate(partite[b].data) - toDate(partite[a].data));
+
+        sortedKeys.forEach(key => {
+          const p = partite[key];
+          if (p.risultato && p.risultato !== 'N/D') {
+            const dataOra = p.data && p.orario ? `${p.data} ${p.orario}` : 'Data/Ora sconosciuta';
+            const avversario = p.avversaria ? escapeHtml(p.avversaria) : 'Avversario sconosciuto';
+            const videoStatus = p.linkVideo ? ' [VIDEO ESISTENTE]' : '';
+            options += `<option value="${key}" data-link="${escapeHtml(p.linkVideo || '')}">vs ${avversario} - ${p.risultato} (${dataOra})${videoStatus}</option>`;
+          }
+        });
+
+        select.innerHTML = options;
+        select.removeEventListener('change', updateVideoForm);
+        select.addEventListener('change', updateVideoForm);
+        updateVideoForm();
+        byId('save-video-btn').disabled = false;
+        
+      } catch(error) {
+        console.error("Errore caricamento partite admin video:", error);
+        select.innerHTML = '<option value="">Errore caricamento</option>';
+      }
+    };
+
+    // Aggiorna il campo input quando la partita selezionata cambia
+    const updateVideoForm = () => {
+      const select = byId('video-partita-select');
+      selectedMatchKey = select.value;
+      const selectedOption = select.options[select.selectedIndex];
+      
+      if (selectedMatchKey && selectedOption) {
+        const currentLink = selectedOption.dataset.link || '';
+        byId('video-link-input').value = currentLink;
+        byId('save-video-btn').textContent = currentLink ? 'Aggiorna Link Video' : 'Salva Link Video';
+      } else {
+        byId('video-link-input').value = '';
+        byId('save-video-btn').textContent = 'Salva Link Video';
+      }
+    };
+
+    // Salva il link video nel database
+    const saveVideoLink = async () => {
+      if (!isAdmin) return alert("Solo admin.");
+      if (!selectedMatchKey) return alert("Seleziona prima una partita.");
+
+      const linkVideo = v('video-link-input').trim();
+      if (!linkVideo) return alert("Inserisci il link YouTube.");
+
+      if (!getYouTubeId(linkVideo)) return alert("Il link non sembra essere un URL YouTube valido.");
+
+      try {
+        const updates = {};
+        updates[`/calendario/${selectedMatchKey}/linkVideo`] = linkVideo;
+
+        await update(ref(db), updates);
+
+        alert('Link video salvato con successo!');
+        loadPartitePerVideoAdmin();
+        loadVideoList(); // Aggiorna anche la sezione pubblica immediatamente
+      } catch(error) {
+        alert('Errore salvataggio link: ' + error.message);
+        console.error(error);
+      }
+    };
+
+    /* ===== Funzioni Originali dell'Utente (Integrate) ===== */
     
-    /* ===== FUNZIONI CALENDARIO/PARTITE (PUBBLICHE E ADMIN) ===== */
+    async function loadRosa(){
+      const ul = byId('rosa-list'); if(!ul) return; ul.innerHTML='';
+      const snap = await get(ref(db,'rosa'));
+      const val = snap.val() || {};
+      const rows = Object.entries(val).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+      if(!rows.length){ ul.innerHTML = '<div class="help">Nessun giocatore inserito.</div>'; return; }
+      ul.className='grid cols-2';
+      rows.forEach(([id,g])=>{
+        const li = document.createElement('li'); li.className='card';
+        li.innerHTML = `
+          <div class="row" style="justify-content:space-between">
+            <div>
+              <div class="player-title">${g.nome} ${g.cognome} <span class="pill">#${g.numero}</span></div>
+              <div class="player-sub">Ruolo: <b>${g.ruolo}</b> • Stato: <b>${g.stato}</b></div>
+            </div>
+          </div>`;
+        ul.appendChild(li);
+      });
+    }
 
     /**
-     * Carica il calendario delle prossime partite (incluse quelle passate con risultato)
-     * @param {boolean} isAdminView - Se true, carica la vista Admin con i bottoni di gestione.
+     * FUNZIONE loadProssimeGiornate (AGGIORNATA PER LISTA CANDIDATI)
+     * IMPLEMENTAZIONE FIX: Struttura più chiara per l'elenco dei candidati. (FIX RICHIESTO)
      */
-    window.loadProssimeGiornate = async (isAdminView) => {
-      const ulId = isAdminView ? 'admin-calendario-list' : 'calendario-list';
-      const ul = byId(ulId);
-      if(!ul) return;
-
-      ul.innerHTML = isAdminView ? '<div class="help">Caricamento calendario Admin...</div>' : '<div class="help">Caricamento calendario...</div>';
+    window.loadProssimeGiornate = async function(asAdmin){
+      const listId = asAdmin ? 'admin-calendario-list' : 'calendario-list';
+      const ul = byId(listId); if(!ul) return; ul.innerHTML='';
+      const [snapCalendar, snapRosa] = await Promise.all([
+          get(ref(db,'calendario')),
+          get(ref(db, 'rosa')) // Fetch player data for candidate list
+      ]);
+      const val = snapCalendar.val() || {};
+      const rosa = snapRosa.val() || {}; 
       
-      try{
-        const [snapPartite, snapRosa] = await Promise.all([
-          get(ref(db, 'calendario')),
-          get(ref(db, 'rosa')) // Ottieni la rosa per mostrare la lista dei candidati
-        ]);
+      let entries = Object.entries(val);
+      const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
+      const today = new Date(); today.setHours(0,0,0,0);
+      entries.sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
+      if(!entries.length){ ul.innerHTML = '<div class="help">Nessuna partita a calendario.</div>'; return; }
+      ul.className='grid cols-3';
+      for(const [matchId,m] of entries){
+        const candSnap = await get(ref(db,`calendario/${matchId}/candidature`));
+        const cand = candSnap.val() || {};
+        const candidatiIds = Object.keys(cand).filter(pid => cand[pid] === true);
+        const candCount = candidatiIds.length;
+        const isPublished = m.formazionePubblicata === true;
+        const matchDate = toDate(m.data);
+        const isPast = matchDate < today;
 
-        const val = snapPartite.val() || {};
-        const rosa = snapRosa.val() || {};
-        const entries = Object.entries(val);
+        // Check for valid result (determines if match is "concluded")
+        const risultatoValido = (m.risultato && m.risultato !== 'N/D');
 
-        const toDate = (d)=>{
-          const [dd,mm,yyyy] = String(d||'').split('/');
-          return new Date(`${mm}/${dd}/${yyyy}`);
-        };
-        
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        
-        entries.sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
-
-        if(!entries.length){
-          ul.innerHTML = '<div class="help">Nessuna partita a calendario.</div>';
-          return;
+        // Candidatura Button: only active if no result is entered AND not expired
+        let candButton = '';
+        if (risultatoValido) {
+           candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura terminata</button>`;
+        } else if (isPast) {
+           candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura scaduta</button>`;
+        } else {
+          candButton = `<button class="btn btn--accent" onclick="candidati('${matchId}')">Candidatura</button>`; 
         }
 
-        ul.className='grid cols-3';
-
-        for(const [matchId,m] of entries){
-          const candSnap = await get(ref(db,`calendario/${matchId}/candidature`));
-          const cand = candSnap.val() || {};
-          const candidatiIds = Object.keys(cand).filter(pid => cand[pid] === true);
-          const candCount = candidatiIds.length;
-          const isPublished = m.formazionePubblicata === true;
-          const matchDate = toDate(m.data);
-          const isPast = matchDate < today;
-          
-          // Check for valid result (determines if match is "concluded")
-          const risultatoValido = (m.risultato && m.risultato !== 'N/D');
-
-          // Candidatura Button: only active if no result is entered AND not expired
-          let candButton = '';
-          if (risultatoValido) {
-            candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura terminata</button>`;
-          } else if (isPast) {
-            candButton = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Candidatura scaduta</button>`;
-          } else {
-            candButton = `<button class="btn btn--accent" onclick="candidati('${matchId}')">Candidatura</button>`;
-          }
-
-          // Prestazioni Button: active only if result is valid
-          let prestazioniBtn = '';
-          if (risultatoValido) {
-            prestazioniBtn = `<button class="btn" onclick="showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
-          } else {
-            prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
-          }
-          
-          // *** FIX 3.1 & 3.2: LOGICA LISTA CANDIDATI PUBBLICA ***
-          let candidatiListHtml = '';
-          // La lista è visibile solo se le candidature sono chiuse E NON c'è un risultato
-          if (m.candidaturePubbliche === true && !risultatoValido) { 
-              
-              // Filtra solo i candidati che sono ancora presenti nella rosa
-              const availablePlayers = candidatiIds
-                  .map(pid => rosa[pid] ? { ...rosa[pid], pid } : null)
-                  .filter(p => p !== null)
-                  .sort((a,b)=> (a.numero||0)-(b[1].numero||0));
-              
-              let playersHtml = `<ul style="font-size:0.9rem;">`;
-              
-              if (availablePlayers.length > 0) { 
-                  playersHtml += availablePlayers.map(p => { 
-                      const nome = escapeHtml(p.nome || '?'); 
-                      const cognome = escapeHtml(p.cognome || '?'); 
-                      const ruolo = escapeHtml(p.ruolo || 'Ruolo N/D'); 
-                      const stato = escapeHtml(p.stato || 'Stato N/D'); 
-                      const statoColor = stato === 'Titolare' ? '#0e7a0d' : (stato === 'Riserva' ? 'var(--red)' : 'var(--ink-sub)'); 
-                      return ` 
-                          <li style="display:grid; grid-template-columns: 2fr 1.5fr 1fr; gap:8px; align-items:center; border-bottom:1px dotted #eee; padding:4px 0;"> 
-                              <div style="font-weight:700; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${nome} <b>${cognome}</b></div> 
-                              <div style="color:var(--ink-sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.85rem;">${ruolo}</div> 
-                              <div style="text-align:right;"> 
-                                  <span class="pill" style="background:${statoColor}; color:#fff; padding:2px 6px; font-size:.75rem;">${stato}</span> 
-                              </div> 
-                          </li> 
-                      `; 
-                  }).join(''); 
-              } else { 
-                  // FIX 3.2: Nuovo messaggio di errore più chiaro e colore corretto
-                  playersHtml += `<li style="padding:4px 0; color:var(--ink-sub); font-weight:600;">Nessun giocatore disponibile nella lista pubblicata.</li>`; 
-              } 
-              
-              playersHtml += '</ul>'; 
-              
-              candidatiListHtml = ` 
-                  <div style="margin-top:8px; border-top:1px solid var(--line); padding-top:8px;"> 
-                  <div style="font-weight:700; color:#0e7a0d; margin-bottom: 4px;">Disponibilità Confermate (${candCount}):</div> 
-                  ${playersHtml} 
-                  </div> `; 
-          } else { 
-            candidatiListHtml = `<div class="pill" style="margin-top:8px; font-size:0.85rem;">Nessuna disponibilità confermata (0).</div>`; 
-          } 
-          // *** FINE FIX 3.1 & 3.2 ***
-          
-          // ** FIX: Preparazione della stringa JSON per l'Admin Button (SyntaxError Fix) ** const formazioneJSON = JSON.stringify(m.formazioni || {});
-
-          const dataOra = m.data && m.orario ? `${m.data} ${m.orario}` : 'Data/Ora sconosciuta';
-          const campo = m.campo ? escapeHtml(m.campo) : 'Campo sconosciuto';
-          const avversario = m.avversaria ? escapeHtml(m.avversaria) : 'Avversario N/D';
-          const risultato = m.risultato ? m.risultato : 'N/D';
-          const pillColor = risultatoValido ? (risultato.split('-').length === 2 && parseInt(risultato.split('-')[0].trim()) > parseInt(risultato.split('-')[1].trim()) ? 'background:#0e7a0d;' : (risultato.split('-').length === 2 && parseInt(risultato.split('-')[0].trim()) === parseInt(risultato.split('-')[1].trim()) ? 'background:#ccc;' : 'background:var(--red);')) : 'background:var(--ink-sub);';
+        // Prestazioni Button: active only if result is valid
+        let prestazioniBtn = '';
+        if (risultatoValido) {
+          prestazioniBtn = `<button class="btn" onclick="showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`;
+        } else {
+          prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
+        }
+        
+        // ** FIX: Preparazione della stringa JSON per l'Admin Button (SyntaxError Fix) **
+        // Utilizzo m.formazioni (struttura corretta)
+        const jsonFormazioni = JSON.stringify(m.formazioni || null); 
+        // Escape la stringa JSON per inserirla in un attributo HTML (es: " -> &quot;)
+        const escapedJsonFormazioni = escapeHtml(jsonFormazioni);
 
 
-          const li = document.createElement('li');
-          li.className = 'card';
-          li.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <h4 style="margin:0; line-height:1.2;">vs ${avversario}</h4>
-                <span class="pill" style="${pillColor} color:#fff; font-weight:800; font-size:1.1rem; line-height:1; padding:4px 8px;">${risultato}</span>
+        // *** LOGICA PER LISTA CANDIDATI PUBBLICA (FIX IMPLEMENTATO QUI) ***
+        let candidatiListHtml = '';
+        if (!asAdmin && !risultatoValido) { // Se è sezione pubblica e NON c'è risultato
+            if (candCount > 0) {
+                // Prepara la lista dettagliata dei candidati
+                const sortedCandidati = candidatiIds.map(pid => rosa[pid] ? { ...rosa[pid], id: pid } : null)
+                    .filter(p => p !== null)
+                    .sort((a, b) => (a.numero || 0) - (b.numero || 0));
+                
+                // --- DEBUG LOG ---
+                if (sortedCandidati.length === 0) {
+                    console.warn(`Partita ${matchId} (vs ${m.avversaria}): Trovate ${candCount} candidature, ma 0 giocatori corrispondenti nella Rosa. Controllare consistenza dati.`);
+                }
+                // --- FINE DEBUG LOG ---
+
+                let playersHtml = '<ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:2px; font-size:0.9rem;">';
+                
+                // Intestazione per Nome/Ruolo/Stato
+                playersHtml += `
+                    <li style="display:grid; grid-template-columns: 2fr 1.5fr 1fr; gap:8px; align-items:center; padding:4px 0; font-weight:700; color:var(--ink-sub); border-bottom:1px solid var(--line); margin-bottom:4px;">
+                        <div>Nome/Cognome</div>
+                        <div>Ruolo</div>
+                        <div style="text-align:right;">Stato</div>
+                    </li>
+                `;
+
+                if (sortedCandidati.length > 0) {
+                    playersHtml += sortedCandidati.map(p => {
+                        const nome = escapeHtml(p.nome || '?');
+                        const cognome = escapeHtml(p.cognome || '?');
+                        const ruolo = escapeHtml(p.ruolo || 'Ruolo N/D');
+                        const stato = escapeHtml(p.stato || 'Stato N/D'); // Stato da Rosa
+                        
+                        const statoColor = stato === 'Titolare' ? '#0e7a0d' : (stato === 'Riserva' ? 'var(--red)' : 'var(--ink-sub)');
+                        
+                        return `
+                            <li style="display:grid; grid-template-columns: 2fr 1.5fr 1fr; gap:8px; align-items:center; border-bottom:1px dotted #eee; padding:4px 0;">
+                                <div style="font-weight:700; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${nome} <b>${cognome}</b></div>
+                                <div style="color:var(--ink-sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.85rem;">${ruolo}</div>
+                                <div style="text-align:right;">
+                                    <span class="pill" style="background:${statoColor}; color:#fff; padding:2px 6px; font-size:.75rem;">${stato}</span>
+                                </div>
+                            </li>
+                        `;
+                    }).join('');
+                } else {
+                     playersHtml += `<li style="padding:4px 0; color:var(--red); font-weight:600;">Nessun giocatore candidabile trovato nella rosa con l'ID corrispondente.</li>`;
+                }
+                
+                playersHtml += '</ul>';
+                
+                candidatiListHtml = `
+                    <div style="margin-top:8px; border-top:1px solid var(--line); padding-top:8px;">
+                        <div style="font-weight:700; color:#0e7a0d; margin-bottom: 4px;">Disponibilità Confermate (${candCount}):</div>
+                        ${playersHtml}
+                    </div>
+                `;
+            } else {
+                candidatiListHtml = `<div class="pill" style="margin-top:8px; font-size:0.85rem;">Nessuna disponibilità confermata (0).</div>`;
+            }
+        }
+        // *** FINE LOGICA PER LISTA CANDIDATI PUBBLICA (FIX IMPLEMENTATO QUI) ***
+
+        // NUOVA LOGICA: Calcolo Esito per display in Calendario
+        let esitoPill = '';
+        if (m.risultato && m.risultato !== 'N/D') {
+            const [scoreCasaStr, scoreOspiteStr] = m.risultato.split('-').map(s => s.trim());
+            const scoreCasa = parseInt(scoreCasaStr);
+            const scoreOspite = parseInt(scoreOspiteStr);
+
+            if (!isNaN(scoreCasa) && !isNaN(scoreOspite)) {
+                let esito = '';
+                let esitoColor = '';
+                const scoreTuscolano = m.casa ? scoreCasa : scoreOspite;
+                const scoreAvversaria = m.casa ? scoreOspite : scoreCasa;
+
+                if (scoreTuscolano > scoreAvversaria) {
+                    esito = 'VITTORIA';
+                    esitoColor = 'background:#0e7a0d; color:#fff;'; // Green
+                } else if (scoreTuscolano < scoreAvversaria) {
+                    esito = 'SCONFITTA';
+                    esitoColor = 'background:var(--red); color:#fff;'; // Red
+                } else {
+                    esito = 'PAREGGIO';
+                    esitoColor = 'background:var(--yellow); color:#111;'; // Yellow
+                }
+                esitoPill = `<span class="pill" style="${esitoColor} margin-left: 10px; flex-shrink:0;">${esito}</span>`;
+            }
+        } 
+        
+        const li = document.createElement('li'); li.className = 'card';
+        li.innerHTML = `
+          <div class="row" style="justify-content:space-between; align-items:flex-start; width:100%;">
+            <div>
+              <div class="player-title" style="display:flex; align-items:center;">
+                 vs ${escapeHtml(m.avversaria)} ${m.risultato && m.risultato !== 'N/D' ? `(${m.risultato})` : ''} ${esitoPill}
+              </div>
+              <div class="player-sub">
+                ${m.data} ${m.orario ? `• ${m.orario}` : ''}<br>
+                Campo: ${escapeHtml(m.campo)} • ${m.casa ? 'Casa' : 'Trasferta'}
+              </div>
+              ${candidatiListHtml} 
             </div>
-            <div style="margin-top:8px;">
-                <div class="help">${dataOra} (${campo})</div>
-                <div class="help" style="margin-top:4px;">Candidature: <b>${candCount}</b></div>
-                ${!isAdminView ? candidatiListHtml : ''}
-            </div>
-            
-            <div class="actions" style="margin-top:14px;">
-              ${isAdminView ? `
-                <button class="btn btn--accent" onclick="showRisultatoForm('${matchId}','${escapeHtml(m.avversaria)}')">Risultato/Video</button>
-                <button class="btn" onclick="showFormazioneForm('${matchId}','${escapeHtml(m.avversaria)}','${escapeHtml(formazioneJSON)}')">Formazione/Sost.</button>
-                <button class="btn" onclick="showPrestazioniValutazione('${matchId}','${escapeHtml(m.avversaria)}')">Assegna Voti</button>
-                <button class="btn" onclick="showCandidatureEditor('${matchId}','${escapeHtml(m.avversaria)}')">Gest. Cand.</button>
-                <button class="btn" onclick="crudDeletePartita('${matchId}')" style="background:var(--ink-sub); color:#fff;">Elimina Partita</button>
+            <div class="actions" style="margin:0; flex:0 0 auto; display:flex; flex-direction:column; gap:6px;">
+              ${asAdmin ? `
+                <button class="btn btn--admin" onclick="showResultForm('${matchId}','${escapeHtml(m.avversaria)}')">Risultato/Video</button>
+                <button class="btn btn--admin" onclick="showFormazioneForm('${matchId}','${escapeHtml(m.avversaria)}', '${escapedJsonFormazioni}')">Formazione/Sost.</button>
+                <button class="btn btn--admin" onclick="showCandidatureEditor('${matchId}','${escapeHtml(m.avversaria)}')">Candidature (${candCount})</button>
+                ${risultatoValido ? `<button class="btn btn--admin" onclick="showValutazionePartitaForm('${matchId}','${escapeHtml(m.avversaria)}')">Valuta Prestazioni</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Valuta Prestazioni</button>`}
+                <button class="btn" onclick="crudDeletePartita('${matchId}')">Elimina Partita</button>
               ` : `
                 ${candButton}
                 ${isPublished && !risultatoValido ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione Pubblica</button>` : (isPublished && risultatoValido ? `<button class="btn" onclick="showFormazionePubblica('${matchId}','${escapeHtml(m.avversaria)}')">Formazione</button>` : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Formazione</button>`)}
                 ${prestazioniBtn}
               `}
             </div>
-          `;
-          ul.appendChild(li);
-        }
-      }catch(e){
-        console.error("Errore caricamento prossime giornate:",e);
-        ul.innerHTML = '<div class="help" style="color:red">Errore durante il caricamento del calendario.</div>';
+          </div>`;
+        ul.appendChild(li);
       }
-    };
-    
+    }
+
+
     /**
      * CORREZIONE 1: Implementazione del layout a blocchi/griglia per i risultati (Risultati squadra)
      */
     async function loadStatistiche(){
-        const ul = byId('statistiche-risultati-list');
-        if(!ul) return;
-        ul.innerHTML='';
+      const ul = byId('statistiche-risultati-list'); if(!ul) return; ul.innerHTML='';
+      const snap = await get(ref(db,'calendario'));
+      const val = snap.val() || {};
+      const entries = Object.entries(val);
+      const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
+      entries.sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
 
-        const snap = await get(ref(db,'calendario'));
-        const val = snap.val() || {};
-        const entries = Object.entries(val);
+      let totalGames = 0;
+      let wins = 0;
+      let draws = 0;
+      let losses = 0;
 
-        const toDate = (d)=>{
-            const [dd,mm,yyyy] = String(d||'').split('/');
-            return new Date(`${mm}/${dd}/${yyyy}`);
-        };
+      const html = entries.map(([matchId, p]) => {
+        if (!p.risultato || p.risultato === 'N/D') return '';
 
-        entries.sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
-
-        let totalGames = 0;
-        let wins = 0;
-        let draws = 0;
-        let losses = 0;
-
-        const html = entries.map(([matchId, p]) => {
-            if (!p.risultato || p.risultato === 'N/D') return '';
-
-            totalGames++;
-            
-            let esitoPill = '<span class="pill" style="background:#ddd; color:#333; padding:2px 8px;">N/D</span>';
-            const [scoreCasa, scoreOspite] = p.risultato.split('-').map(s => parseInt(s.trim()));
-            const avversario = escapeHtml(p.avversaria || 'Avversario N/D');
-            
-            if (!isNaN(scoreCasa) && !isNaN(scoreOspite)) {
-                if (scoreCasa > scoreOspite) {
-                    wins++;
-                    esitoPill = `<span class="pill" style="background:#0e7a0d; color:#fff; padding:2px 8px;">VINTA</span>`;
-                } else if (scoreCasa === scoreOspite) {
-                    draws++;
-                    esitoPill = `<span class="pill" style="background:#888; color:#fff; padding:2px 8px;">PAREGGIATA</span>`;
-                } else {
-                    losses++;
-                    esitoPill = `<span class="pill" style="background:var(--red); color:#fff; padding:2px 8px;">PERSA</span>`;
-                }
-            } else {
-                // If result is N/D but we still count it
-                totalGames--; // Don't count invalid results as played
-            }
-
-
-            return `
-                <li class="card" style="display:flex; flex-direction:column;">
-                    <div style="font-size:0.9rem; color:var(--ink-sub);">${p.data}</div>
-                    <div style="font-weight:700; margin:4px 0;">vs ${avversario}</div>
-                    <div style="font-size:1.2rem; font-weight:900; margin-top:4px;">${p.risultato}</div>
-                    <div style="margin-top:8px;">${esitoPill}</div>
-                </li>
-            `;
-        }).join('');
-
-        ul.className='grid cols-3';
-        ul.innerHTML = html.length > 0 ? html : '<div class="help">Nessun risultato di partita disponibile.</div>';
+        totalGames++;
         
-        // Aggiorna il riepilogo generale
-        const riepilogoHtml = `
-            <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
-                <h3>Riepilogo Stagionale</h3>
-                <ul class="grid cols-2" style="font-weight:700; list-style:disc; padding-left:20px;">
-                    <li style="color:var(--ink);">Partite Giocate: <b>${totalGames}</b></li>
-                    <li style="color:#0e7a0d;">Vittorie: <b>${wins}</b></li>
-                    <li style="color:#888;">Pareggi: <b>${draws}</b></li>
-                    <li style="color:var(--red);">Sconfitte: <b>${losses}</b></li>
-                </ul>
-            </div>
-        `;
-        byId('statistiche-risultati-list').insertAdjacentHTML('beforebegin', riepilogoHtml);
+        let esitoPill = '<span class="pill" style="background:#ddd; color:#333; padding:2px 8px;">N/D</span>';
+        const [scoreCasa, scoreOspite] = p.risultato.split('-').map(s => parseInt(s.trim()));
+        const avversario = p.avversaria ? escapeHtml(p.avversaria) : 'Avversario sconosciuto';
+        const campo = p.campo ? escapeHtml(p.campo) : 'Campo sconosciuto';
 
+        if (!isNaN(scoreCasa) && !isNaN(scoreOspite)) {
+            let esito = '';
+            let esitoColor = '';
+            
+            // AC Tuscolano score depends on 'casa' flag
+            const scoreTuscolano = p.casa ? scoreCasa : scoreOspite;
+            const scoreAvversaria = p.casa ? scoreOspite : scoreCasa;
+
+            if (scoreTuscolano > scoreAvversaria) {
+                esito = 'VITTORIA';
+                esitoColor = 'background:#0e7a0d; color:#fff;'; // Green
+                wins++;
+            } else if (scoreTuscolano < scoreAvversaria) {
+                esito = 'SCONFITTA';
+                esitoColor = 'background:var(--red); color:#fff;'; // Red
+                losses++;
+            } else {
+                esito = 'PAREGGIO';
+                esitoColor = 'background:var(--yellow); color:#111;'; // Yellow
+                draws++;
+            }
+            esitoPill = `<span class="pill" style="${esitoColor} padding:2px 8px; font-size:.75rem; margin-top:4px; display:inline-block;">${esito}</span>`;
+        }
+        
+        return `
+            <li class="card" style="margin-bottom:10px; padding:12px; display:grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px;">
+                <div>
+                    <div style="font-size:0.9rem; color:var(--ink-sub); margin-bottom: 4px;">${p.data || 'N/D'} • ${p.casa ? 'Casa' : 'Trasferta'}</div>
+                    <strong style="font-size:1.1rem; display:block;">vs ${avversario}</strong>
+                    <span class="player-sub">${campo}</span>
+                </div>
+                <div style="text-align:right; flex-shrink:0;">
+                    <div style="font-weight:800; font-size:1.4rem; line-height:1.2;">${p.risultato}</div>
+                    ${esitoPill}
+                </div>
+            </li>
+        `;
+      }).join('');
+      
+      const riepilogo = `
+        <div class="grid cols-3" style="margin-bottom:16px;">
+            <div class="card" style="background:#0e7a0d; color:#fff; text-align:center;">
+                <div style="font-size:1.5rem; font-weight:900;">${wins}</div>
+                Vittorie
+            </div>
+            <div class="card" style="background:var(--yellow); color:#111; text-align:center;">
+                <div style="font-size:1.5rem; font-weight:900;">${draws}</div>
+                Pareggi
+            </div>
+            <div class="card" style="background:var(--red); color:#fff; text-align:center;">
+                <div style="font-size:1.5rem; font-weight:900;">${losses}</div>
+                Sconfitte
+            </div>
+        </div>
+        <div class="help" style="text-align:center; font-weight:700; margin-bottom:16px;">Totale partite con risultato: ${totalGames}</div>
+      `;
+
+      ul.innerHTML = riepilogo + html;
     }
 
     /**
-     * Funzione per mostrare i dati del Riepilogo Giocatori
+     * CORREZIONE 2: Esposizione a window e logica per mostrare i dati del Riepilogo Giocatori
      */
     window.loadPrestazioniAggregato = function(){
         // Logica omessa per brevità, resta invariata rispetto alla precedente versione corretta.
@@ -1075,500 +1191,384 @@
         const cont = byId('prestazioni-aggregate-content');
         if(!cont) return;
         cont.innerHTML = '<h3>Riepilogo Giocatori</h3><div class="help">Calcolo media voti e goal in corso…</div>';
-
+      
         // Funzione asincrona interna per non bloccare il DOM, ma non usiamo await qui
         (async () => {
-        try {
+          try {
             const [snapRosa, snapPrests] = await Promise.all([
-            get(ref(db, 'rosa')),
-            get(ref(db, 'prestazioni'))
+              get(ref(db, 'rosa')),
+              get(ref(db, 'prestazioni'))
             ]);
             const rosa = snapRosa.val() || {};
             const prestazioniByMatch = snapPrests.val() || {};
-
+            
             // 1. Aggrega dati
             const aggregato = {};
             Object.keys(rosa).forEach(pid => {
-            aggregato[pid] = {
-                totalVoto: 0,
-                countVoto: 0,
-                goal: 0,
-                nome: `${rosa[pid].nome} ${rosa[pid].cognome}`,
-                numero: rosa[pid].numero,
-                cognome: rosa[pid].cognome
-            };
+              aggregato[pid] = { totalVoto: 0, countVoto: 0, goal: 0, nome: `${rosa[pid].nome} ${rosa[pid].cognome}`, numero: rosa[pid].numero, cognome: rosa[pid].cognome };
             });
 
             Object.values(prestazioniByMatch).forEach(matchPrests => {
-            Object.entries(matchPrests).forEach(([pid, data]) => {
+              Object.entries(matchPrests).forEach(([pid, data]) => {
                 if (aggregato[pid]) {
-                // Assicurati che data.voto sia un numero e non NaN
-                if (data.voto !== null && typeof data.voto === 'number' && !Number.isNaN(data.voto)) {
+                  // Assicurati che data.voto sia un numero e non NaN
+                  if (data.voto !== null && typeof data.voto === 'number' && !Number.isNaN(data.voto)) {
                     aggregato[pid].totalVoto += data.voto;
                     aggregato[pid].countVoto += 1;
+                  }
+                  aggregato[pid].goal += data.goal || 0;
                 }
-                aggregato[pid].goal += data.goal || 0;
-                }
-            });
+              });
             });
 
             // 2. Calcola media e prepara righe
             const rows = Object.values(aggregato).map(a => {
-            const mediaVoto = a.countVoto > 0 ? (a.totalVoto / a.countVoto).toFixed(2) : 'N/D';
-            
-            let barColor = 'yellow';
-            let barWidth = 0;
-            let mediaNum = parseFloat(mediaVoto);
-
-            if (!isNaN(mediaNum)) {
-                // Range 4-10. Minimo 4 (0% della barra utile), Max 10 (100% della barra utile)
-                // Scala utile: 6 punti (da 4 a 10)
-                const minVoto = 4;
-                const maxVoto = 10;
-                
-                // Normalizza il voto tra 0 e 100%
-                barWidth = Math.min(100, Math.max(0, (mediaNum - minVoto) / (maxVoto - minVoto) * 100));
-                
-                if (mediaNum >= 7.5) {
-                    barColor = 'green';
-                } else if (mediaNum >= 6) {
-                    barColor = 'yellow';
-                } else {
-                    barColor = 'red';
-                }
-            }
-
-            const bar = mediaVoto !== 'N/D' ? `
-                <div class="voto-bar-container">
-                    <div class="voto-bar ${barColor}" style="width:${barWidth}%;"></div>
-                </div>` : '';
-
-            return {
-                nome: a.nome,
-                numero: a.numero,
-                mediaVoto: mediaVoto,
-                goal: a.goal,
-                bar: bar
-            };
-            })
-            .sort((a, b) => {
-                // Ordina per numero di maglia (come fallback)
-                const numA = parseInt(a.numero || 999);
-                const numB = parseInt(b.numero || 999);
-                return numA - numB;
+              const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
+              return { pid: a.pid, nome: a.nome, cognome: a.cognome, numero: a.numero, 
+                       partite: a.countVoto, 
+                       mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
+                       goal: a.goal };
+            }).sort((a,b)=> {
+              // Ordina per media voto (decrescente), poi goal (decrescente)
+              const am = a.mediaVoto===null ? -1 : a.mediaVoto;
+              const bm = b.mediaVoto===null ? -1 : b.mediaVoto;
+              if (bm !== am) return bm - am;
+              if (b.goal !== a.goal) return b.goal - a.goal;
+              return a.nome.localeCompare(b.nome);
             });
 
+            // 3. Genera HTML
             const rowsHtml = rows.map(r => {
-                return `
+              let mediaVotoDisplay = '—';
+              let bar = '';
+              if (r.mediaVoto !== null) {
+                const votoNum = r.mediaVoto;
+                mediaVotoDisplay = `<b>${votoNum.toFixed(2)}</b>`;
+                // Calcolo barra
+                const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100)));
+                const color = (votoNum >= 7 ? 'green' : (votoNum >= 6 ? 'yellow' : 'red'));
+                bar = `
+                  <div class="voto-bar-container">
+                    <div class="voto-bar ${color}" style="width:${perc}%;"></div>
+                  </div>`;
+              }
+              
+              return `
                 <li class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="font-weight:900;">#${r.numero} ${escapeHtml(r.nome)}</div>
-                        <div style="font-weight:900; font-size:1.1rem; color:var(--red);">
-                            ${r.mediaVoto}
-                        </div>
+                  <div class="row" style="justify-content:space-between; align-items:flex-start;">
+                    <div>
+                      <div class="player-title">${r.nome} ${r.numero ? `<span class="pill">#${r.numero}</span>` : ''}</div>
+                      <div class="player-sub">Partite con voto: <b>${r.partite}</b></div>
                     </div>
-                    ${r.bar}
-                    <div style="margin-top:6px;">Goal: <b>${r.goal}</b></div>
+                    <div style="text-align:right;">
+                      <div class="player-title">Voto Medio: ${mediaVotoDisplay}</div>
+                      <div class="player-sub" style="margin-top:6px;">Goal: <b>${r.goal}</b></div>
+                    </div>
+                  </div>
+                  ${bar}
                 </li>
-            `;
+              `;
             }).join('');
-
+            
             cont.innerHTML = `
-                <h3>Riepilogo Giocatori</h3>
-                <div class="help">Media voto calcolata solo sulle partite con voto assegnato.</div>
-                <ul class="grid cols-2" style="margin-top:14px;">
-                    ${rowsHtml}
-                </ul>
+              <h3>Riepilogo Giocatori</h3>
+              <div class="help">Media voto calcolata solo sulle partite con voto assegnato.</div>
+              <ul class="grid cols-2" style="margin-top:14px;">
+                ${rowsHtml}
+              </ul>
             `;
-        } catch (e) {
+          } catch (e) {
             console.error("Errore caricamento prestazioni aggregate:", e);
             cont.innerHTML = `<h3>Riepilogo Giocatori</h3><div class="help" style="color:red">Errore durante il caricamento dei dati. Controlla la console per i dettagli.</div>`;
-        }
+          }
         })();
-    } 
+    }
 
     /**
      * FIX: Esposto a window per essere accessibile dall'onclick HTML
      */
     window.showFormazionePubblica = async function(matchId, avv){
-        window.showPublicSection('formazione-pubblica-section');
-        const box = byId('formazione-pubblica-content');
-        box.innerHTML = 'Caricamento formazione...';
-
-        const [snapMatch, snapRosa] = await Promise.all([
-            get(ref(db, `calendario/${matchId}`)),
-            get(ref(db, 'rosa'))
-        ]);
-        const match = snapMatch.val() || {};
-        const rosa = snapRosa.val() || {};
-        
-        if(!match.formazionePubblicata || !match.formazioni || !match.formazioni['0']){
-            box.innerHTML = `<h2>Formazione vs ${escapeHtml(avv)}</h2><p>Formazione non ancora pubblicata.</p>`;
-            return;
+      window.showPublicSection('formazione-pubblica-section');
+      const box = byId('formazione-pubblica-content');
+      box.innerHTML = 'Caricamento formazione...';
+      const [snapMatch, snapRosa] = await Promise.all([
+        get(ref(db, `calendario/${matchId}`)),
+        get(ref(db, 'rosa'))
+      ]);
+      const match = snapMatch.val() || {};
+      const rosa = snapRosa.val() || {};
+      
+      if(!match.formazionePubblicata || !match.formazioni || !match.formazioni['0']){
+        box.innerHTML = `<h2>Formazione vs ${escapeHtml(avv)}</h2><p>Formazione non ancora pubblicata.</p>`;
+        return;
+      }
+      
+      const titolariIniziali = match.formazioni['0'].formazione || {};
+      const panchinaIds = match.formazioni['0'].panchina || [];
+      const sostituzioni = match.sostituzioni || [];
+      
+      let html = [];
+      html.push(`<h2>Formazione vs ${escapeHtml(avv)}</h2>`);
+      
+      // 1. Titolari
+      html.push(`<h4>Titolari (Minuto 0)</h4>`);
+      html.push(`<div class="field" style="height:320px; position:relative;">`);
+      
+      const POS_331 = {
+        'Portiere': {top:'90%', left:'50%'},
+        'Terzino sinistro': {top:'65%', left:'20%'},
+        'Terzino destro': {top:'65%', left:'80%'},
+        'Difensore centrale': {top:'60%', left:'50%'},
+        'Centrocampista centrale': {top:'40%', left:'50%'},
+        'Centrocampista sinistro': {top:'30%', left:'20%'},
+        'Centrocampista destro': {top:'30%', left:'80%'},
+        'Attaccante centrale': {top:'10%', left:'50%'}
+      };
+      
+      Object.entries(titolariIniziali).forEach(([ruolo, pid]) => {
+        const pl = rosa[pid];
+        const pos = POS_331[ruolo];
+        if (pl && pos) {
+          html.push(`
+            <div class="marker" style="top:${pos.top}; left:${pos.left};">
+              <b>${escapeHtml(pl.cognome)}</b><br>${ruolo}
+            </div>
+          `);
         }
-
-        const titolariIniziali = match.formazioni['0'].formazione || {};
-        const panchinaIds = match.formazioni['0'].panchina || [];
-        const sostituzioni = match.sostituzioni || [];
-
-        let html = [];
-        html.push(`<h2>Formazione vs ${escapeHtml(avv)}</h2>`);
-
-        // 1. Titolari
-        html.push(`<h4>Titolari (Minuto 0)</h4>`);
-        html.push(`<div class="field" style="height:320px; position:relative;">`);
-
-        const POS_331 = { // Posizioni mappate per un 7 vs 7 (es. 3-3-1)
-            'P': {top:'5%', left:'50%'},
-            'DC1': {top:'30%', left:'30%'}, 'DC2': {top:'30%', left:'70%'}, 'DL': {top:'35%', left:'50%'},
-            'MEC1': {top:'60%', left:'25%'}, 'MEC2': {top:'60%', left:'50%'}, 'MEC3': {top:'60%', left:'75%'},
-            'ATT': {top:'85%', left:'50%'}
-        };
-        const positionsUsed = new Set();
-        
-        Object.entries(titolariIniziali).forEach(([ruolo, pid]) => {
-            const player = rosa[pid] || { nome: 'Giocatore', cognome: 'Sconosciuto', numero: '?' };
-            const pos = POS_331[ruolo];
-            if(pos && !positionsUsed.has(ruolo)){
-                const name = escapeHtml(player.cognome || player.nome);
-                html.push(`
-                    <div class="marker" style="top:${pos.top}; left:${pos.left};">
-                        #${player.numero} ${name}
-                    </div>
-                `);
-                positionsUsed.add(ruolo);
-            }
+      });
+      html.push(`</div>`);
+      
+      // 2. Panchina
+      if (panchinaIds.length > 0) {
+        html.push(`<h4>Panchina</h4>`);
+        html.push(`<ul class="grid cols-3">`);
+        panchinaIds.forEach(pid => {
+          const pl = rosa[pid];
+          if (pl) {
+            html.push(`<li class="card"><b>${escapeHtml(pl.nome)} ${escapeHtml(pl.cognome)}</b> (#${pl.numero})</li>`);
+          }
         });
-        
-        html.push(`</div>`); // Close .field
-
-        // 2. Panchina
-        if (panchinaIds.length > 0) {
-            html.push(`<h4>Panchina (${panchinaIds.length} giocatori)</h4>`);
-            html.push(`<ul class="grid cols-3" style="font-size:0.9rem;">`);
-            panchinaIds.forEach(pid => {
-                const player = rosa[pid] || { nome: 'Giocatore', cognome: 'Sconosciuto', numero: '?' };
-                html.push(`
-                    <li class="card" style="padding:6px 10px;">
-                        <b>#${player.numero} ${escapeHtml(player.cognome)}</b> ${escapeHtml(player.ruolo)}
-                    </li>
-                `);
-            });
-            html.push(`</ul>`);
-        }
-
-        // 3. Sostituzioni
-        if (sostituzioni.length > 0) {
-            html.push(`<h4>Sostituzioni Effettuate (${sostituzioni.length})</h4>`);
-            html.push(`<ul style="list-style:disc; padding-left:20px; font-size:0.95rem;">`);
-            sostituzioni.forEach(s => {
-                const entrante = rosa[s.entra] ? `${rosa[s.entra].cognome} (#${rosa[s.entra].numero})` : 'Giocatore Sconosciuto';
-                const uscente = rosa[s.esce] ? `${rosa[s.esce].cognome} (#${rosa[s.esce].numero})` : 'Giocatore Sconosciuto';
-                html.push(`
-                    <li>Minuto ${s.minuto}: Entra <b>${escapeHtml(entrante)}</b>, Esce ${escapeHtml(uscente)}</li>
-                `);
-            });
-            html.push(`</ul>`);
-        }
-
-        box.innerHTML = html.join('');
+        html.push(`</ul>`);
+      }
+      
+      // 3. Sostituzioni
+      if (sostituzioni.length > 0) {
+        html.push(`<h4>Sostituzioni Effettuate</h4>`);
+        html.push(`<ul class="grid cols-2">`);
+        sostituzioni.forEach(s => {
+          // Trova nome giocatore
+          const plEntra = rosa[s.entra];
+          const plEsce = rosa[s.esce];
+          html.push(`
+            <li class="card">
+              <div style="font-weight:700">Minuto ${s.minuto}</div>
+              Entra: <b>${plEntra ? plEntra.cognome : '?'}</b> • Esce: <b>${plEsce ? plEsce.cognome : '?'}</b>
+            </li>
+          `);
+        });
+        html.push(`</ul>`);
+      }
+      
+      box.innerHTML = html.join('');
     }
 
     /**
      * FIX: Esposto a window per essere accessibile dall'onclick HTML
      */
     window.showPrestazioniPubbliche = async function(matchId, avv){
-        window.showPublicSection('prestazioni-partita-section');
-        const content = byId('prestazioni-partita-content');
-        content.innerHTML = 'Caricamento prestazioni...';
+      window.showPublicSection('prestazioni-partita-section');
+      const content = byId('prestazioni-partita-content');
+      content.innerHTML = 'Caricamento prestazioni...';
 
-        const [snapPrests, snapRosa, snapMatch] = await Promise.all([
-            get(ref(db, `prestazioni/${matchId}`)),
-            get(ref(db, 'rosa')),
-            get(ref(db, `calendario/${matchId}`))
+      try {
+        const [snapRosa, snapPrests, snapMatch] = await Promise.all([
+          get(ref(db, 'rosa')),
+          get(ref(db, `prestazioni/${matchId}`)),
+          get(ref(db, `calendario/${matchId}`))
         ]);
-        const prestazioni = snapPrests.val() || {};
+        
         const rosa = snapRosa.val() || {};
+        const prestazioni = snapPrests.val() || {};
         const match = snapMatch.val() || {};
-
+        
         // Determina quali giocatori erano candidati (ou titolari/riserve) per la partita
         const cand = match.candidature || {};
         const titolariIds = Object.values(match.formazioni?.['0']?.formazione || {});
         const panchinaIds = match.formazioni?.['0']?.panchina || [];
         const availablePids = new Set([...titolariIds, ...panchinaIds, ...Object.keys(cand)]);
-
+        
         const finalRows = Object.entries(prestazioni)
-            .filter(([pid, data]) => availablePids.has(pid)) // FILTRA PER CANDIDATURA/FORMAZIONE
-            .map(([pid, data]) => {
-                const player = rosa[pid] || { nome: 'Giocatore', cognome: 'Sconosciuto', numero: '?' };
-                let voto = data.voto;
-                // Formatta il voto
-                if (voto === null || Number.isNaN(voto)) {
-                    voto = '—';
-                }
-                return {
-                    nome: `${player.nome} ${player.cognome}`,
-                    numero: player.numero,
-                    voto: voto,
-                    goal: data.goal || 0 // goal is always a number (or 0)
-                };
-            })
-            // Ordina per Voto (numeri prima, '—' dopo), poi Goal
-            .sort((a, b) => {
-                const votoA = a.voto === '—' ? -1 : a.voto;
-                const votoB = b.voto === '—' ? -1 : b.voto;
-                if (votoB !== votoA) return votoB - votoA;
-                return (b.goal || 0) - (a.goal || 0);
-            });
+          .filter(([pid, data]) => availablePids.has(pid)) // FILTRA PER CANDIDATURA/FORMAZIONE
+          .map(([pid, data]) => {
+            const player = rosa[pid] || { nome: 'Giocatore', cognome: 'Sconosciuto', numero: '?' };
+            let voto = data.voto;
+            // Formatta il voto
+            if (voto === null || Number.isNaN(voto)) {
+              voto = '—';
+            }
+            return { 
+              nome: `${player.nome} ${player.cognome}`, 
+              numero: player.numero, 
+              voto: voto, 
+              goal: data.goal || 0 // goal is always a number (or 0)
+            };
+          })
+          // Ordina per Voto (numeri prima, '—' dopo), poi Goal
+          .sort((a, b) => {
+            const votoA = a.voto === '—' ? -1 : a.voto;
+            const votoB = b.voto === '—' ? -1 : b.voto;
+            if (votoB !== votoA) return votoB - votoA;
+            return (b.goal || 0) - (a.goal || 0);
+          });
 
         if (finalRows.length === 0) {
-            content.innerHTML = `<h3>vs ${escapeHtml(avv)}</h3><p>Nessun giocatore ha ricevuto prestazioni per questa partita.</p>`;
-            return;
+          content.innerHTML = `<h3>vs ${escapeHtml(avv)}</h3><p>Nessun giocatore ha ricevuto prestazioni per questa partita.</p>`;
+          return;
         }
 
         let tableHtml = `<table class="table"><thead><tr><th>#</th><th>Giocatore</th><th>Voto</th><th>Goal</th></tr></thead><tbody>`;
         finalRows.forEach(r => {
-            tableHtml += `<tr><td>${r.numero}</td><td>${escapeHtml(r.nome)}</td><td><b>${r.voto}</b></td><td>${r.goal}</td></tr>`;
+          tableHtml += `<tr><td>${r.numero}</td><td>${escapeHtml(r.nome)}</td><td><b>${r.voto}</b></td><td>${r.goal}</td></tr>`;
         });
         tableHtml += `</tbody></table>`;
 
-        content.innerHTML = `
-            <h3>Prestazioni vs ${escapeHtml(avv)}</h3>
-            <div class="help">Voti e Goal assegnati per questa partita.</div>
-            <div style="overflow-x:auto;">${tableHtml}</div>
-        `;
+        content.innerHTML = `<h3>Prestazioni vs ${escapeHtml(avv)}</h3>` + tableHtml;
+      } catch (err) {
+        console.error('Errore caricamento prestazioni partita:', err);
+        content.innerHTML = `<h3>Prestazioni vs ${escapeHtml(avv)}</h3><p style="color:red">Impossibile caricare le prestazioni.</p>`;
+      }
     }
-
-    /* ===== FUNZIONI ADMIN: CRUD DATI/GIOCATORI/PARTITE ===== */
     
-    // Funzioni CRUD di base (create, update, delete) per Giocatori, Partite, ecc.
+    
+    /* ========================================================================= */
+    /* === FIX: IMPLEMENTAZIONE FUNZIONI ADMIN (CRUD/READ) === */
+    /* ========================================================================= */
+    
+    // Funzioni Admin placeholder (CREATE/UPDATE/DELETE)
+    window.addPlayer=()=>alert("La funzione di aggiunta giocatore è da implementare.");
+    window.addMatch=()=>alert("La funzione di aggiunta partita è da implementare.");
+    window.crudUpdateGiocatore=()=>alert("Funzione CRUD Update Giocatore da implementare.");
+    window.crudDeleteGiocatore=()=>alert("Funzione CRUD Delete Giocatore da implementare.");
+    window.crudUpdatePartita=()=>alert("Funzione CRUD Update Partita da implementare.");
+    window.crudDeletePartita=()=>alert("Funzione CRUD Delete Partita da implementare."); 
+    window.loadCandidature=()=>document.getElementById('candidature-list').innerHTML = "<h3>Gestione Candidature</h3><div class=\"help\">Seleziona una partita dal menu Formaz./Voti/Cand. per vedere i dettagli, oppure implementa qui un selettore globale.</div>";
+    window.closeCandidatureEditor=()=>alert("La funzione di chiusura editor candidature è da completare.");
+
 
     /**
-     * Gestisce l'inserimento di un nuovo giocatore.
+     * FIX: Carica la lista dei giocatori per il CRUD (Admin - Gestione Dati)
      */
-    window.handleGiocatoreSubmit = async (e) => {
-        e.preventDefault();
-        if(!isAdmin) return alert("Solo admin.");
+    window.loadCrudGiocatori = async function(){
+      const tbody = byId('crud-giocatori-body'); if(!tbody) return; 
+      tbody.innerHTML='<tr><td colspan="7">Caricamento giocatori...</td></tr>';
+      
+      try {
+        const [snapRosa, snapPrests] = await Promise.all([
+            get(ref(db, 'rosa')),
+            get(ref(db, 'prestazioni')) // Fetch all performances
+        ]);
+        const val = snapRosa.val() || {};
+        const allPrests = snapPrests.val() || {};
         
-        const nome = v('giocatore-nome');
-        const cognome = v('giocatore-cognome');
-        const numero = parseInt(v('giocatore-numero'));
-        const ruolo = v('giocatore-ruolo');
-        const stato = v('giocatore-stato');
-
-        if(!nome||!cognome||isNaN(numero)||!ruolo||!stato) return alert("Compila tutti i campi!");
-
-        try{
-            const newPlayerRef = push(ref(db, 'rosa'));
-            await set(newPlayerRef, { nome, cognome, numero, ruolo, stato });
-            alert('Giocatore aggiunto con successo!');
-            e.target.reset(); // Resetta il form
-            loadCrudGiocatori(); // Aggiorna la lista
-        }catch(err){ alert('Errore: '+err.message); }
-    };
-
-    /**
-     * Aggiorna un giocatore esistente (chiamato dal CRUD).
-     */
-    window.crudUpdateGiocatore = async (id) => {
-        if(!isAdmin) return alert("Solo admin.");
-        const nome = byId(`giocatore-nome-${id}`).value;
-        const cognome = byId(`giocatore-cognome-${id}`).value;
-        const numero = parseInt(byId(`giocatore-numero-${id}`).value);
-        const ruolo = byId(`giocatore-ruolo-${id}`).value;
-        const stato = byId(`giocatore-stato-${id}`).value;
+        const rows = Object.entries(val).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
         
-        if(!nome||!cognome||isNaN(numero)||!ruolo||!stato) return alert("Compila tutti i campi!");
+        if(!rows.length){ tbody.innerHTML = '<tr><td colspan="7">Nessun giocatore inserito.</td></tr>'; return; }
         
-        try{
-            await update(ref(db, 'rosa/'+id), { nome, cognome, numero, ruolo, stato });
-            alert('Giocatore aggiornato!');
-        }catch(err){ alert('Errore: '+err.message); }
-    };
+        let html = '';
+        for(const [id, g] of rows){
+          let presenzeCount = 0;
+          
+          // Count performances for this player
+          Object.values(allPrests).forEach(matchPrests => {
+              if (matchPrests[id]) {
+                  presenzeCount++;
+              }
+          });
 
-    /**
-     * Elimina un giocatore (chiamato dal CRUD).
-     */
-    window.crudDeleteGiocatore = async (id) => {
-        if(!isAdmin) return alert("Solo admin.");
-        if(!confirm(`Sei sicuro di voler eliminare il giocatore con ID ${id}?`)) return;
-        
-        try{
-            await remove(ref(db, 'rosa/'+id));
-            alert('Giocatore eliminato!');
-            loadCrudGiocatori(); // Ricarica la lista
-        }catch(err){ alert('Errore: '+err.message); }
-    };
-
-    /**
-     * Carica la lista dei giocatori nel pannello CRUD (Admin - Gestione Dati).
-     */
-    window.loadCrudGiocatori = async () => {
-        const tbody = byId('crud-giocatori-body');
-        if(!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="7">Caricamento giocatori...</td></tr>';
-        
-        try {
-            const [snapRosa, snapPrests] = await Promise.all([
-                get(ref(db, 'rosa')),
-                get(ref(db, 'prestazioni'))
-            ]);
-            
-            const val = snapRosa.val() || {};
-            const allPrests = snapPrests.val() || {};
-            
-            const rows = Object.entries(val).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
-            
-            if(!rows.length){
-                tbody.innerHTML = '<tr><td colspan="7">Nessun giocatore inserito.</td></tr>';
-                return;
-            }
-
-            let html = '';
-            for(const [id, g] of rows){
-                let presenzeCount = 0;
-                // Count performances for this player
-                Object.values(allPrests).forEach(matchPrests => {
-                    if (matchPrests[id]) {
-                        presenzeCount++;
-                    }
-                });
-                
-                html += `
-                    <tr>
-                        <td><input type="text" value="${escapeHtml(g.nome)}" data-field="nome" data-id="${id}" id="giocatore-nome-${id}"/></td>
-                        <td><input type="text" value="${escapeHtml(g.cognome)}" data-field="cognome" data-id="${id}" id="giocatore-cognome-${id}"/></td>
-                        <td><input type="number" min="1" max="99" value="${g.numero}" data-field="numero" data-id="${id}" id="giocatore-numero-${id}"/></td>
-                        <td><input type="text" value="${escapeHtml(g.ruolo)}" data-field="ruolo" data-id="${id}" id="giocatore-ruolo-${id}"/></td>
-                        <td><input type="text" value="${escapeHtml(g.stato)}" data-field="stato" data-id="${id}" id="giocatore-stato-${id}"/></td>
-                        <td>${presenzeCount}</td>
-                        <td>
-                            <button class="btn btn--accent" onclick="crudUpdateGiocatore('${id}')" style="padding:4px 8px; font-size:.8rem;">Salva</button>
-                            <button class="btn" onclick="crudDeleteGiocatore('${id}')" style="padding:4px 8px; font-size:.8rem; background:var(--ink-sub); color:#fff;">Elimina</button>
-                        </td>
-                    </tr>
-                `;
-            }
-            tbody.innerHTML = html;
-        } catch(e) {
-            console.error("Errore caricamento CRUD Giocatori:", e);
-            tbody.innerHTML = '<tr><td colspan="7" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
+          html += `
+            <tr>
+              <td><input type="text" value="${escapeHtml(g.nome)}" data-field="nome" data-id="${id}"/></td>
+              <td><input type="text" value="${escapeHtml(g.cognome)}" data-field="cognome" data-id="${id}"/></td>
+              <td><input type="number" min="1" max="99" value="${g.numero}" data-field="numero" data-id="${id}"/></td>
+              <td><input type="text" value="${escapeHtml(g.ruolo)}" data-field="ruolo" data-id="${id}"/></td>
+              <td><input type="text" value="${escapeHtml(g.stato)}" data-field="stato" data-id="${id}"/></td>
+              <td>${presenzeCount}</td>
+              <td>
+                <button class="btn btn--accent" onclick="crudUpdateGiocatore('${id}')" style="padding:4px 8px; font-size:.8rem;">Salva</button>
+                <button class="btn" onclick="crudDeleteGiocatore('${id}')" style="padding:4px 8px; font-size:.8rem; background:var(--ink-sub); color:#fff;">Elimina</button>
+              </td>
+            </tr>
+          `;
         }
+        tbody.innerHTML = html;
+
+      } catch(e) {
+        console.error("Errore caricamento CRUD Giocatori:", e);
+        tbody.innerHTML = '<tr><td colspan="7" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
+      }
     }
 
 
     /**
-     * Gestisce l'inserimento di una nuova partita.
+     * FIX: Carica la lista delle partite per il CRUD (Admin - Gestione Dati)
      */
-    window.handlePartitaSubmit = async (e) => {
-        e.preventDefault();
-        if(!isAdmin) return alert("Solo admin.");
+    window.loadCrudPartite = async function(){
+      const tbody = byId('crud-partite-body'); if(!tbody) return; 
+      tbody.innerHTML='<tr><td colspan="7">Caricamento partite...</td></tr>';
+      
+      try {
+        const snap = await get(ref(db,'calendario'));
+        const val = snap.val() || {};
+        const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
+        const rows = Object.entries(val).sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
         
-        const data = v('match-data');
-        const orario = v('match-orario');
-        const campo = v('match-campo');
-        const avversaria = v('match-avversaria');
-
-        if(!data||!orario||!campo||!avversaria) return alert("Compila tutti i campi!");
-
-        try{
-            const newMatchRef = push(ref(db, 'calendario'));
-            await set(newMatchRef, { 
-                data, 
-                orario, 
-                campo, 
-                avversaria,
-                risultato: 'N/D', // Default result
-                linkVideo: ''
-            });
-            alert('Partita aggiunta con successo!');
-            e.target.reset();
-            window.loadProssimeGiornate(true); // Aggiorna il calendario Admin
-        }catch(err){ alert('Errore: '+err.message); }
-    };
-
-    /**
-     * Elimina una partita (chiamato dal CRUD Admin Calendario).
-     */
-    window.crudDeletePartita = async (id) => {
-        if(!isAdmin) return alert("Solo admin.");
-        if(!confirm(`Sei sicuro di voler eliminare la partita con ID ${id}? Tutte le formazioni, candidature e prestazioni associate saranno perse.`)) return;
+        if(!rows.length){ tbody.innerHTML = '<tr><td colspan="7">Nessuna partita inserita.</td></tr>'; return; }
         
-        try{
-            await remove(ref(db, 'calendario/'+id));
-            await remove(ref(db, 'prestazioni/'+id)); // Rimuovi anche le prestazioni
-            alert('Partita e dati associati eliminati!');
-            window.loadProssimeGiornate(true); // Ricarica la lista
-        }catch(err){ alert('Errore: '+err.message); }
-    };
-
-    /**
-     * Carica la lista delle partite nel pannello CRUD (Admin - Gestione Dati).
-     */
-    window.loadCrudPartite = async () => {
-        const tbody = byId('crud-partite-body');
-        if(!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="5">Caricamento partite...</td></tr>';
+        let html = rows.map(([id, m]) => {
+          const isCasa = m.casa === true || m.casa === 'true';
+          return `
+            <tr>
+              <td><input type="text" value="${escapeHtml(m.data)}" data-field="data" data-id="${id}"/></td>
+              <td><input type="time" value="${escapeHtml(m.orario||'')}" data-field="orario" data-id="${id}"/></td>
+              <td><input type="text" value="${escapeHtml(m.avversaria)}" data-field="avversaria" data-id="${id}"/></td>
+              <td><input type="text" value="${escapeHtml(m.risultato||'N/D')}" data-field="risultato" data-id="${id}"/></td>
+              <td><input type="text" value="${escapeHtml(m.campo)}" data-field="campo" data-id="${id}"/></td>
+              <td>
+                <select data-field="casa" data-id="${id}">
+                  <option value="true" ${isCasa ? 'selected' : ''}>Casa</option>
+                  <option value="false" ${!isCasa ? 'selected' : ''}>Trasferta</option>
+                </select>
+              </td>
+              <td>
+                <button class="btn btn--accent" onclick="crudUpdatePartita('${id}')" style="padding:4px 8px; font-size:.8rem;">Salva</button>
+                <button class="btn" onclick="crudDeletePartita('${id}')" style="padding:4px 8px; font-size:.8rem; background:var(--ink-sub); color:#fff;">Elimina</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
         
-        try {
-            const snap = await get(ref(db, 'calendario'));
-            const val = snap.val() || {};
-            const rows = Object.entries(val);
+        tbody.innerHTML = html;
 
-            const toDate = (d)=>{
-                const [dd,mm,yyyy] = String(d||'').split('/');
-                return new Date(`${mm}/${dd}/${yyyy}`);
-            };
-
-            // Ordina dalla più recente
-            rows.sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
-            
-            if(!rows.length){
-                tbody.innerHTML = '<tr><td colspan="5">Nessuna partita inserita.</td></tr>';
-                return;
-            }
-
-            let html = '';
-            for(const [id, p] of rows){
-                const risultatoColor = p.risultato === 'N/D' ? 'var(--ink-sub)' : (p.risultato.split('-').length === 2 && parseInt(p.risultato.split('-')[0].trim()) > parseInt(p.risultato.split('-')[1].trim()) ? '#0e7a0d' : 'var(--red)');
-                html += `
-                    <tr>
-                        <td>${escapeHtml(p.data)}</td>
-                        <td>${escapeHtml(p.orario)}</td>
-                        <td>${escapeHtml(p.avversaria)}</td>
-                        <td style="font-weight:700; color:${risultatoColor};">${escapeHtml(p.risultato)}</td>
-                        <td>
-                            <button class="btn" onclick="crudDeletePartita('${id}')" style="padding:4px 8px; font-size:.8rem; background:var(--ink-sub); color:#fff;">Elimina</button>
-                        </td>
-                    </tr>
-                `;
-            }
-            tbody.innerHTML = html;
-        } catch(e) {
-            console.error("Errore caricamento CRUD Partite:", e);
-            tbody.innerHTML = '<tr><td colspan="5" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
-        }
+      } catch(e) {
+        console.error("Errore caricamento CRUD Partite:", e);
+        tbody.innerHTML = '<tr><td colspan="7" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
+      }
     }
 
 
-    /**
-     * Carica il selettore di partite nel pannello CRUD (Admin - Gestione Dati - Candidature).
-     */
-    window.loadCrudCandidatureSelect = async () => {
+    // Helper per popolare il selettore delle candidature
+    const loadCrudCandidatureSelect = async () => {
         const select = byId('crud-candidature-select');
         if (!select) return;
+        select.innerHTML = '<option value="">Caricamento...</option>';
+        byId('crud-candidature-panel').style.display = 'none'; // Nasconde il pannello all'inizio
         
         try {
             const snap = await get(ref(db, 'calendario'));
             const partite = snap.val() || {};
-            
             let options = '<option value="">Seleziona una partita...</option>';
-            
-            const toDate = (d) => { 
-                const [dd, mm, yyyy] = String(d || '').split('/'); 
-                return new Date(`${mm}/${dd}/${yyyy}`); 
-            };
-            
+
+            const toDate = (d) => { const [dd, mm, yyyy] = String(d || '').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
             const sortedKeys = Object.keys(partite).sort((a, b) => toDate(partite[b].data) - toDate(partite[a].data));
 
             sortedKeys.forEach(key => {
@@ -1578,202 +1578,200 @@
             });
 
             select.innerHTML = options;
-            
-            select.removeEventListener('change', () => loadCandidatureForMatch(select.value));
-            select.addEventListener('change', () => loadCandidatureForMatch(select.value));
-            
         } catch (e) {
             console.error("Errore caricamento selettore candidature:", e);
             select.innerHTML = '<option value="">Errore caricamento</option>';
         }
     };
 
-
     /**
-     * Carica la lista delle candidature per una partita (Admin - Gestione Dati).
+     * FIX: Carica la lista delle candidature per una partita (Admin - Gestione Dati)
      */
     window.loadCandidatureForMatch = async function(matchId){
-        const tbody = byId('crud-candidature-body');
-        const panel = byId('crud-candidature-panel');
-        if(!tbody || !panel) return;
+      const tbody = byId('crud-candidature-body');
+      const panel = byId('crud-candidature-panel');
+      if(!tbody || !panel) return;
+      
+      if (!matchId) {
+        panel.style.display = 'none';
+        return;
+      }
+      
+      tbody.innerHTML='<tr><td colspan="3">Caricamento candidature...</td></tr>';
+      panel.style.display = 'block';
 
-        if (!matchId) {
-            panel.style.display = 'none';
-            return;
-        }
+      try {
+        const [snapRosa, snapCand] = await Promise.all([
+          get(ref(db, 'rosa')),
+          get(ref(db, `calendario/${matchId}/candidature`))
+        ]);
+        
+        const rosa = snapRosa.val() || {};
+        const candidature = snapCand.val() || {};
+        
+        const rows = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+        
+        let html = rows.map(([pid, p]) => {
+          const isCandidato = candidature[pid] === true; // Assuming candidature is a map of {pid: true/false}
+          return `
+            <tr>
+              <td>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)} (#${p.numero})</td>
+              <td>${p.uid || 'N/D'}</td>
+              <td>
+                <input type="checkbox" id="cand-${pid}" data-id="${pid}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;">
+                <label for="cand-${pid}" style="display:inline; font-weight:400; margin-left:8px;">Candidato</label>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        
+        tbody.innerHTML = html;
+        
+        // Aggiorna l'azione del pulsante di salvataggio (ancora placeholder)
+        byId('crud-candidature-save').onclick = () => alert(`Funzione per salvare le candidature per la partita ${matchId} da implementare.`);
 
-        tbody.innerHTML='<tr><td colspan="3">Caricamento candidature...</td></tr>';
-        panel.style.display = 'block';
+      } catch(e) {
+        console.error("Errore caricamento Candidature CRUD:", e);
+        tbody.innerHTML = '<tr><td colspan="3" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
+      }
+    }
 
-        try {
-            const [snapRosa, snapCand] = await Promise.all([
-                get(ref(db, 'rosa')),
-                get(ref(db, `calendario/${matchId}/candidature`))
-            ]);
 
-            const rosa = snapRosa.val() || {};
-            const candidature = snapCand.val() || {};
-            
-            const rows = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
-
-            let html = rows.map(([pid, p]) => {
-                const isCandidato = candidature[pid] === true; // Assuming candidature is a map of {pid: true/false}
-                return `
-                    <tr>
-                        <td>#${p.numero}</td>
-                        <td>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)}</td>
-                        <td>${isCandidato ? 'Sì' : 'No'}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            tbody.innerHTML = html.length > 0 ? html : '<tr><td colspan="3">Nessun giocatore in rosa.</td></tr>';
-
-        } catch (e) {
-            console.error("Errore caricamento candidature per partita:", e);
-            tbody.innerHTML = '<tr><td colspan="3" style="color:red">Errore durante il caricamento delle candidature.</td></tr>';
-        }
-    };
-
+    // Funzioni Admin per i form (Mostra struttura + Caricamento dati)
     
     /**
-     * FIX: Carica dati esistenti per il form Inserimento Risultato/Video.
+     * FIX: Carica dati esistenti per il form Risultato/Video.
      */
-    window.showRisultatoForm = async function(matchId, avv) {
-        window.showAdminSection('admin-statistiche-section');
-        const container = byId('risultato-form-container');
-        container.innerHTML = 'Caricamento dati partita...';
-        
-        const snap = await get(ref(db, `calendario/${matchId}`));
-        const m = snap.val() || {};
-        
-        const risultato = m.risultato && m.risultato !== 'N/D' ? m.risultato : '';
-        const linkVideo = m.linkVideo || '';
-        
-        container.innerHTML = `
-            <h3>Gestione Risultato/Video vs ${escapeHtml(avv)}</h3>
-            <div class="help">Inserisci il risultato finale e il link YouTube del match.</div>
-            <form id="risultato-editor-form" data-match-id="${matchId}">
-                <label>Risultato (es. 4-2)</label>
-                <input id="match-risultato" type="text" placeholder="Es. 4-2" value="${risultato}" required />
-                
-                <label>Link Video YouTube</label>
-                <input id="match-video-link" type="url" placeholder="https://www.youtube.com/watch?v=..." value="${linkVideo}" />
-                <div class="help">Assicurati che sia un link valido per l'anteprima.</div>
+    window.showResultForm = async function(matchId, avv) {
+      window.showAdminSection('admin-statistiche-section');
+      const container = byId('risultato-form-container');
+      container.innerHTML = 'Caricamento dati partita...';
+      
+      const snap = await get(ref(db, `calendario/${matchId}`));
+      const m = snap.val() || {};
+      
+      const risultatoValue = escapeHtml(m.risultato || '');
+      const linkVideoValue = escapeHtml(m.linkVideo || '');
 
-                <div class="actions">
-                    <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Risultato e Video</button>
-                </div>
-            </form>
-        `;
+      container.innerHTML = `
+        <h3>Inserimento Risultato/Video vs ${escapeHtml(avv)}</h3>
+        <div class="help">**Attenzione:** La funzione di salvataggio del risultato e del video è da implementare.</div>
+        <form id="result-entry-form" data-match-id="${matchId}">
+            <label>Risultato (Esempio: 5-3)</label>
+            <input type="text" id="risultato" placeholder="X-Y" value="${risultatoValue}" required>
+            <label>Link YouTube (Facoltativo)</label>
+            <input type="url" id="linkVideo" placeholder="https://www.youtube.com/watch?v=..." value="${linkVideoValue}" />
+            <p class="help">ID Partita: <b>${matchId}</b></p>
+            <div class="actions">
+                <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Risultato e Video</button>
+            </div>
+        </form>
+      `;
     };
-
+    
     /**
      * FIX: Carica dati esistenti per il form Formazione/Sostituzioni.
      */
-    window.showFormazioneForm = async function(matchId, avv, formazioneJsonString) {
-        // Accetta la stringa JSON escapata
-        window.showAdminSection('admin-formazione-section');
-        const container = byId('formazione-form-container');
-        container.innerHTML = 'Caricamento dati formazione...';
+    window.showFormazioneForm = async function(matchId, avv, formazioneJsonString) { // Accetta la stringa JSON escapata
+      window.showAdminSection('admin-formazione-section');
+      const container = byId('formazione-form-container');
+      container.innerHTML = 'Caricamento dati formazione...';
+      
+      const f = JSON.parse(formazioneJsonString) || {}; // Fa il parse della stringa JSON
+      const titolariIniziali = f['0']?.formazione || {};
+      const panchinaIds = f['0']?.panchina || [];
+      
+      const snap = await get(ref(db, `calendario/${matchId}`));
+      const m = snap.val() || {};
+      const sostituzioni = m.sostituzioni || [];
 
-        const f = JSON.parse(formazioneJsonString) || {}; // Fa il parse della stringa JSON
-        const titolariIniziali = f['0']?.formazione || {};
-        const panchinaIds = f['0']?.panchina || [];
+      let titolariInfo = 'Nessun titolare salvato.';
+      if (titolariIniziali && Object.keys(titolariIniziali).length > 0) {
+        titolariInfo = 'Titolari già salvati per: ' + Object.keys(titolariIniziali).map(r => `<b>${r}</b>`).join(', ');
+      }
+      
+      let panchinaInfo = 'Nessuna panchina salvata.';
+      if (panchinaIds && panchinaIds.length > 0) {
+        panchinaInfo = `Panchina salvata con <b>${panchinaIds.length}</b> giocatori.`;
+      }
 
-        const snap = await get(ref(db, `calendario/${matchId}`));
-        const m = snap.val() || {};
-        const sostituzioni = m.sostituzioni || [];
-
-        let titolariInfo = 'Nessun titolare salvato.';
-        if (titolariIniziali && Object.keys(titolariIniziali).length > 0) {
-            titolariInfo = 'Titolari già salvati per: ' + Object.keys(titolariIniziali).map(r => `<b>${r}</b>`).join(', ');
-        }
-
-        let panchinaInfo = 'Nessuna panchina salvata.';
-        if (panchinaIds && panchinaIds.length > 0) {
-            panchinaInfo = `Panchina salvata con <b>${panchinaIds.length}</b> giocatori.`;
-        }
-
-        let sostituzioniInfo = 'Nessuna sostituzione salvata.';
-        if (sostituzioni && sostituzioni.length > 0) {
-            sostituzioniInfo = `<b>${sostituzioni.length}</b> sostituzioni salvate.`;
-        }
-
-        container.innerHTML = `
-            <h3>Gestione Formazione/Sostituzioni vs ${escapeHtml(avv)}</h3>
-            <div class="help">**Attenzione:** I campi di input per titolari/panchina/sostituzioni sono da implementare. Vengono mostrati solo i dati attuali.</div>
-            <form id="formazione-editor-form" data-match-id="${matchId}">
-                <h4>Formazione Iniziale (Minuto 0)</h4>
-                <div class="help">${titolariInfo}</div>
-                <div class="help">${panchinaInfo}</div>
-                <p class="help">Qui andranno i campi di selezione dei giocatori per ruolo.</p>
-                <hr>
-                <h4>Sostituzioni</h4>
-                <div class="help">${sostituzioniInfo}</div>
-                <p class="help">Qui andranno i campi per aggiungere/modificare le sostituzioni (Entra, Esce, Minuto).</p>
-
-                <div class="actions" style="margin-top:20px;">
-                    <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Formazione/Sostituzioni</button>
-                    <button type="button" class="btn" onclick="alert('Funzione di pubblicazione da implementare!')">Pubblica Formazione</button>
-                </div>
-            </form>
-        `;
+      let sostituzioniInfo = 'Nessuna sostituzione salvata.';
+      if (sostituzioni && sostituzioni.length > 0) {
+        sostituzioniInfo = `<b>${sostituzioni.length}</b> sostituzioni salvate.`;
+      }
+      
+      container.innerHTML = `
+        <h3>Gestione Formazione/Sostituzioni vs ${escapeHtml(avv)}</h3>
+        <div class="help">**Attenzione:** I campi di input per titolari/panchina/sostituzioni sono da implementare. Vengono mostrati solo i dati attuali.</div>
+        <form id="formazione-editor-form" data-match-id="${matchId}">
+            <h4>Formazione Iniziale (Minuto 0)</h4>
+            <div class="help">${titolariInfo}</div>
+            <div class="help">${panchinaInfo}</div>
+            <p class="help">Qui andranno i campi di selezione dei giocatori per ruolo.</p>
+            <hr>
+            <h4>Sostituzioni</h4>
+            <div class="help">${sostituzioniInfo}</div>
+            <p class="help">Qui andrà la tabella per aggiungere e rimuovere le sostituzioni.</p>
+            <p class="help">ID Partita: <b>${matchId}</b></p>
+            <div class="actions">
+                <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Formazione e Sostituzioni</button>
+                <button type="button" class="btn" onclick="alert('Funzione di pubblicazione da implementare!')">Pubblica Formazione</button>
+            </div>
+        </form>
+      `;
     };
-
+    
     /**
      * FIX: Carica dati esistenti per il form Valutazione Prestazioni.
      */
-    window.showPrestazioniValutazione = async function(matchId, avv) {
-        window.showAdminSection('admin-prestazioni-partita-section');
-        const container = byId('prestazioni-valutazione-container');
-        container.innerHTML = 'Caricamento dati prestazioni...';
+    window.showValutazionePartitaForm = async function(matchId, avv) {
+      window.showAdminSection('admin-prestazioni-partita-section');
+      const container = byId('prestazioni-form-container');
+      container.innerHTML = 'Caricamento dati prestazioni...';
+      
+      const [snapRosa, snapPrests] = await Promise.all([
+          get(ref(db, 'rosa')),
+          get(ref(db, `prestazioni/${matchId}`))
+      ]);
+      
+      const rosa = snapRosa.val() || {};
+      const prestazioni = snapPrests.val() || {};
+      
+      // Get all players, sort by number
+      const players = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+      
+      let rowsHtml = players.map(([pid, p]) => {
+          const data = prestazioni[pid] || {};
+          // Usa Number.isFinite per controllare che voto sia un numero finito prima di mostrarlo
+          const voto = (data.voto !== null && Number.isFinite(data.voto)) ? data.voto : '';
+          const goal = data.goal || 0;
+          return `
+            <tr>
+              <td>${p.numero}</td>
+              <td>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)}</td>
+              <td><input type="number" min="4" max="10" step="0.5" value="${voto}" data-id="${pid}" data-field="voto" style="width:70px;"></td>
+              <td><input type="number" min="0" value="${goal}" data-id="${pid}" data-field="goal" style="width:50px;"></td>
+              <td><input type="text" value="${escapeHtml(data.note || '')}" data-id="${pid}" data-field="note" placeholder="Note"></td>
+            </tr>
+          `;
+      }).join('');
+      
+      let tableHtml = `<table class="table"><thead><tr><th>#</th><th>Giocatore</th><th>Voto</th><th>Goal</th><th>Note</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
 
-        const [snapRosa, snapPrests] = await Promise.all([
-            get(ref(db, 'rosa')),
-            get(ref(db, `prestazioni/${matchId}`))
-        ]);
-
-        const rosa = snapRosa.val() || {};
-        const prestazioni = snapPrests.val() || {};
-        const players = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
-        
-        if (players.length === 0) {
-            container.innerHTML = `<h3>Valutazione Prestazioni vs ${escapeHtml(avv)}</h3><p>Nessun giocatore in rosa.</p>`;
-            return;
-        }
-
-        let rowsHtml = players.map(([pid, p]) => {
-            const data = prestazioni[pid] || {};
-            const voto = data.voto !== undefined && data.voto !== null ? data.voto : '';
-            const goal = data.goal !== undefined && data.goal !== null ? data.goal : 0;
-            return `
-                <tr>
-                    <td>${p.numero}</td>
-                    <td>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)}</td>
-                    <td><input type="number" min="4" max="10" step="0.5" value="${voto}" data-id="${pid}" data-field="voto" style="width:70px;"></td>
-                    <td><input type="number" min="0" value="${goal}" data-id="${pid}" data-field="goal" style="width:50px;"></td>
-                    <td><input type="text" value="${escapeHtml(data.note || '')}" data-id="${pid}" data-field="note" placeholder="Note"></td>
-                </tr>
-            `;
-        }).join('');
-
-        let tableHtml = `<table class="table"><thead><tr><th>#</th><th>Giocatore</th><th>Voto</th><th>Goal</th><th>Note</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
-
-        container.innerHTML = `
-            <h3>Valutazione Prestazioni vs ${escapeHtml(avv)}</h3>
-            <div class="help">**Attenzione:** La funzione di salvataggio dei dati non è implementata. I valori mostrati sono quelli attualmente salvati.</div>
-            <form id="prestazioni-valutazione-form" data-match-id="${matchId}">
-                <h4>Assegna Voti e Goal (Giocatori nella Rosa: ${players.length})</h4>
-                <div style="overflow-x:auto; margin-bottom:14px;">${tableHtml}</div>
-                <p class="help">ID Partita: <b>${matchId}</b></p>
-                <div class="actions">
-                    <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Prestazioni</button>
-                </div>
-            </form>
-        `;
+      container.innerHTML = `
+        <h3>Valutazione Prestazioni vs ${escapeHtml(avv)}</h3>
+        <div class="help">**Attenzione:** La funzione di salvataggio dei dati non è implementata. I valori mostrati sono quelli attualmente salvati.</div>
+        <form id="prestazioni-valutazione-form" data-match-id="${matchId}">
+            <h4>Assegna Voti e Goal (Giocatori nella Rosa: ${players.length})</h4>
+            <div style="overflow-x:auto; margin-bottom:14px;">${tableHtml}</div>
+            <p class="help">ID Partita: <b>${matchId}</b></p>
+            <div class="actions">
+                <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Prestazioni</button>
+            </div>
+        </form>
+      `;
     };
-
+    
     /**
      * FIX: Carica dati esistenti per il form Gestione Candidature (Admin Calendario).
      */
@@ -1781,306 +1779,367 @@
         window.showAdminSection('admin-candidature-section');
         const container = byId('candidature-list');
         container.innerHTML = 'Caricamento dati candidature...';
-
-        const [snapRosa, snapCand, snapMatch] = await Promise.all([
-            get(ref(db, 'rosa')),
-            get(ref(db, `calendario/${matchId}/candidature`)),
-            get(ref(db, `calendario/${matchId}`))
+        
+        const [snapRosa, snapCand] = await Promise.all([
+          get(ref(db, 'rosa')),
+          get(ref(db, `calendario/${matchId}/candidature`))
         ]);
-
+        
         const rosa = snapRosa.val() || {};
         const candidature = snapCand.val() || {};
-        const match = snapMatch.val() || {};
-
+        
         const rows = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
         
-        const isPublished = match.candidaturePubbliche === true;
-
         let listHtml = rows.map(([pid, p]) => {
-            const isCandidato = candidature[pid] === true;
-            return `
-                <li class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                    <div><b>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)}</b> (#${p.numero})</div>
-                    <div>
-                        <input type="checkbox" id="cand-edit-${pid}" data-id="${pid}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;" disabled>
-                    </div>
-                </li>
-            `;
+          const isCandidato = candidature[pid] === true;
+          return `
+            <li class="card" style="display:flex; justify-content:space-between; align-items:center;">
+              <div><b>${escapeHtml(p.nome)} ${escapeHtml(p.cognome)}</b> (#${p.numero})</div>
+              <div>
+                <input type="checkbox" id="cand-edit-${pid}" data-id="${pid}" ${isCandidato ? 'checked' : ''} style="width:auto; margin:0;">
+                <label for="cand-edit-${pid}" style="display:inline; font-weight:400; margin-left:8px;">Candidato</label>
+              </div>
+            </li>
+          `;
         }).join('');
-
+        
         container.innerHTML = `
             <h3>Gestione Candidature vs ${escapeHtml(avv)}</h3>
-            <div class="help">La lista mostra i candidati che hanno dato disponibilità. La checkbox è solo per visualizzazione (gestita dal giocatore).</div>
-            <p class="help">Stato di Pubblicazione: <b>${isPublished ? 'Pubblicato' : 'Bozza'}</b></p>
-            <ul class="grid cols-2" style="margin-top:14px;">
-                ${listHtml}
-            </ul>
-            
-            <div class="actions" style="margin-top:20px;">
-                <button type="button" class="btn btn--accent" onclick="alert('Funzione di salvataggio e pubblicazione da implementare!')">Toggle Pubblicazione Disponibilità</button>
-            </div>
+            <div class="help">**Attenzione:** La funzione di salvataggio è da implementare. I check/uncheck attuali riflettono lo stato del database.</div>
+            <form id="candidature-admin-form" data-match-id="${matchId}">
+                <h4>Lista Candidati (Giocatori nella Rosa: ${rows.length})</h4>
+                <ul class="grid cols-2" style="margin-top:14px;">
+                    ${listHtml}
+                </ul>
+                <p class="help">ID Partita: <b>${matchId}</b></p>
+                <div class="actions">
+                    <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Selezione Candidati</button>
+                </div>
+            </form>
         `;
     };
 
-    /* ===== FINE FUNZIONI ADMIN ===== */
-
+    
+    // Funzioni Pubbliche placeholder (candidati)
+    window.candidati = (matchId) => {
+        if(!auth.currentUser) return alert("Devi fare il login per candidarti.");
+        alert("La logica per la candidatura (salvataggio disponibilità utente) non è stata ancora implementata. Match ID: " + matchId);
+    };
+    
   </script>
-
 </head>
 <body>
-
-  <header>
-    <div class="hero">
-      <img src="https://i.ibb.co/6P01v4z/logo-a-c-tuscolano-bianco.png" alt="Logo AC Tuscolano">
-      <div class="brand">
-        <h1 class="club">A.C. Tuscolano</h1>
-        <p class="tag">Gestione Squadra ⚽</p>
-      </div>
-    </div>
-  </header>
-
-  <nav>
-    <div class="nav-wrap">
-      <button id="rosa-tab" class="tab" data-target="rosa-section" onclick="showPublicSection('rosa-section')">Rosa</button>
-      <button id="calendario-tab" class="tab" data-target="calendario-section" onclick="showPublicSection('calendario-section')">Partite</button>
-      <button id="classifica-tab" class="tab" data-target="classifica-section" onclick="showPublicSection('classifica-section')">Classifica</button>
-      <button id="statistiche-tab" class="tab" data-target="statistiche-section" onclick="showPublicSection('statistiche-section')">Statistiche</button>
-      <button id="video-tab" class="tab" data-target="video-section" onclick="showPublicSection('video-section')">Video</button>
-      <button id="auth-toggle-btn" class="btn" onclick="handleAuthToggle()">Login</button>
-    </div>
-  </nav>
-
-  <div id="admin-menu">
-    <div class="nav-wrap" style="max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px;">
-      <button class="tab" data-admin-target="admin-inserimento-giocatori-section" onclick="showAdminSection('admin-inserimento-giocatori-section')">Nuovo Giocatore</button>
-      <button class="tab" data-admin-target="admin-inserimento-giornate-section" onclick="showAdminSection('admin-inserimento-giornate-section')">Nuova Partita</button>
-      <button class="tab" data-admin-target="admin-calendario-section" onclick="showAdminSection('admin-calendario-section')">Formaz./Voti/Cand.</button>
-      <button class="tab" data-admin-target="admin-video-section" onclick="showAdminSection('admin-video-section')">Gestione Video</button>
-      <button class="tab" data-admin-target="admin-classifica-section" onclick="showAdminSection('admin-classifica-section')">Aggiorna Classifica</button>
-      <button class="tab" data-admin-target="admin-gestione-dati-section" onclick="showAdminSection('admin-gestione-dati-section')">CRUD Dati</button>
-      <button class="tab" data-admin-target="admin-utenti-section" onclick="showAdminSection('admin-utenti-section')">Gestione Utenti</button>
-    </div>
-  </div>
-
-  <main>
-    <section id="login-section" class="content-section">
-      <h2>Login Amministratore</h2>
-      <form id="login-form">
-        <label>Email</label><input id="login-email" type="email" required />
-        <label>Password</label><input id="login-password" type="password" required />
-        <div class="actions">
-          <button type="submit" class="btn btn--accent">Accedi</button>
-        </div>
-      </form>
-    </section>
-
-    <section id="rosa-section" class="content-section active">
-      <h2>La nostra Rosa</h2>
-      <div class="help">Lista dei giocatori, ruolo e stato. Ordinati per numero di maglia.</div>
-      <ul id="rosa-list"></ul>
-    </section>
-
-    <section id="calendario-section" class="content-section">
-      <h2>Calendario & Partite</h2>
-      <div class="help">Lista ordinata dalla partita più recente. Clicca su "Candidatura" per confermare la disponibilità.</div>
-      <ul id="calendario-list" class="grid cols-3"></ul>
-    </section>
-
-    <section id="classifica-section" class="content-section">
-      <h2>Classifica</h2>
-      <div id="classifica-content" style="overflow-x:auto;"> 
-        </div>
-    </section>
-
-    <section id="statistiche-section" class="content-section">
-      <h2>Prestazioni</h2>
-      <h3>Risultati squadra</h3>
-      <div class="help">Lista ordinata dalla partita più recente.</div>
-      <ul id="statistiche-risultati-list"> 
-        </ul>
-      <div id="prestazioni-aggregate-content">
-        <h3>Riepilogo Giocatori</h3>
-        <div class="help">Calcolo media voti e goal in corso…</div>
-      </div>
-    </section>
-    
-    <section id="formazione-pubblica-section" class="content-section">
-      <div id="formazione-pubblica-content">
-        </div>
-      <div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
-    </section>
-
-    <section id="prestazioni-partita-section" class="content-section">
-      <div id="prestazioni-partita-content">
-        </div>
-      <div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
-    </section>
-
-    <section id="video-section" class="content-section">
-      <h2>Video Partite Concluse</h2>
-      <ul id="video-list-ul" style="display:flex; flex-wrap:wrap; gap:16px;">
-        </ul>
-    </section>
-
-
-    <section id="admin-inserimento-giocatori-section" class="content-section">
-      <h2>Admin · Nuovo Giocatore</h2>
-      <form id="giocatore-form" onsubmit="handleGiocatoreSubmit(event)">
-        <label for="giocatore-nome">Nome</label><input id="giocatore-nome" type="text" required />
-        <label for="giocatore-cognome">Cognome</label><input id="giocatore-cognome" type="text" required />
-        <label for="giocatore-numero">Numero Maglia</label><input id="giocatore-numero" type="number" min="1" max="99" required />
-        <label for="giocatore-ruolo">Ruolo</label><input id="giocatore-ruolo" type="text" required placeholder="Es. Attaccante, Difensore, ecc."/>
-        <label for="giocatore-stato">Stato (Titolare/Riserva/Svincolato)</label>
-        <select id="giocatore-stato" required>
-          <option value="Titolare">Titolare</option>
-          <option value="Riserva">Riserva</option>
-          <option value="Svincolato">Svincolato</option>
-        </select>
-        <div class="actions">
-          <button type="submit" class="btn btn--accent">Aggiungi Giocatore</button>
-        </div>
-      </form>
-    </section>
-    
-    <section id="admin-inserimento-giornate-section" class="content-section">
-      <h2>Admin · Nuova Partita</h2>
-      <form id="match-form" onsubmit="handlePartitaSubmit(event)">
-        <label for="match-data">Data Partita</label><input id="match-data" type="text" required placeholder="gg/mm/aaaa" />
-        <label for="match-orario">Orario</label><input id="match-orario" type="time" required />
-        <label for="match-campo">Campo da Gioco</label><input id="match-campo" type="text" required placeholder="Es. Roma Sette, S. Giorgio" />
-        <label for="match-avversaria">Avversaria</label><input id="match-avversaria" type="text" required />
-        <div class="actions">
-          <button type="submit" class="btn btn--accent">Salva Partita</button>
-        </div>
-      </form>
-    </section>
-
-    <section id="admin-calendario-section" class="content-section">
-      <h2>Admin · Gestione Calendario</h2>
-      <div class="help">Puoi inserire formazioni, risultati e valutazioni.</div>
-      <ul id="admin-calendario-list" class="grid cols-3"></ul>
-    </section>
-
-    <section id="admin-classifica-section" class="content-section">
-      <h2>Admin · Gestione Classifica</h2>
-      <div class="help">Aggiorna la classifica prendendola dal sito esterno romatornei.it e salvala nel database per la visualizzazione pubblica.</div>
-      <div class="actions">
-        <button class="btn btn--accent" onclick="updateClassificaFromSito()">Aggiorna Classifica Ora</button>
-      </div>
-      <div id="classifica-risultato-update" style="margin-top:10px;"></div>
-    </section>
-
-    <section id="admin-statistiche-section" class="content-section">
-      <h2>Admin · Inserimento Risultato/Video</h2>
-      <div id="risultato-form-container"></div>
-      <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-    </section>
-
-    <section id="admin-formazione-section" class="content-section">
-      <h2>Admin · Inserimento Formazione</h2>
-      <div id="formazione-form-container"></div>
-      <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-    </section>
-
-    <section id="admin-candidature-section" class="content-section">
-      <h2>Admin · Gestione Candidature</h2>
-      <div id="candidature-list"></div>
-      <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-    </section>
-
-    <section id="admin-prestazioni-partita-section" class="content-section">
-      <h2>Admin · Valutazione Prestazioni</h2>
-      <div id="prestazioni-valutazione-container"></div>
-      <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-    </section>
-
-    <section id="admin-video-section" class="content-section">
-        <h2>Admin · Gestione Video</h2>
-        <div class="help">Collega un link YouTube (dopo l'inserimento del risultato) ad una partita conclusa.</div>
-        <div style="margin-bottom:12px;">
-            <label for="video-partita-select">Seleziona Partita</label>
-            <select id="video-partita-select" style="max-width:100%;"></select>
-        </div>
-        <label for="video-link-input">Link YouTube</label>
-        <input id="video-link-input" type="url" placeholder="https://www.youtube.com/watch?v=..." />
-        <div class="help">Deve essere un link YouTube valido (es. `youtu.be/ID` o `youtube.com/watch?v=ID`).</div>
-        <div class="actions" style="margin-top:12px;">
-            <button id="save-video-btn" class="btn btn--accent" disabled>Salva Link Video</button>
-        </div>
-        <div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
-    </section>
-
-    <section id="admin-gestione-dati-section" class="content-section">
-      <h2>Admin · CRUD Dati</h2>
-      <div class="help">Gestione avanzata dei dati (Giocatori, Partite, Candidature).</div>
-      
-      <h3 style="margin-top:20px;">Giocatori</h3>
-      <div style="overflow-x:auto;">
-        <table class="table">
-          <thead><tr><th>Nome</th><th>Cognome</th><th>#</th><th>Ruolo</th><th>Stato</th><th>Presenze</th><th>Azioni</th></tr></thead>
-          <tbody id="crud-giocatori-body"></tbody>
-        </table>
-      </div>
-
-      <h3 style="margin-top:20px;">Partite</h3>
-      <div style="overflow-x:auto;">
-        <table class="table">
-          <thead><tr><th>Data</th><th>Ora</th><th>Avversaria</th><th>Risultato</th><th>Azioni</th></tr></thead>
-          <tbody id="crud-partite-body"></tbody>
-        </table>
-      </div>
-
-      <h3 style="margin-top:20px;">Candidature</h3>
-      <label for="crud-candidature-select">Seleziona Partita</label>
-      <select id="crud-candidature-select" style="max-width:100%;" onchange="loadCandidatureForMatch(this.value)">
-        <option value="">Caricamento partite...</option>
-      </select>
-      <div id="crud-candidature-panel" style="display:none; margin-top:10px;">
-        <div style="overflow-x:auto;">
-          <table class="table">
-            <thead><tr><th>#</th><th>Giocatore</th><th>Candidato</th></tr></thead>
-            <tbody id="crud-candidature-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="admin-utenti-section" class="content-section">
-      <h2>Admin · Gestione Utenti (Creazione)</h2>
-      <div class="help">Crea nuove utenze Firebase (non admin).</div>
-      <form id="create-user-form">
-        <label>Nome</label><input id="new-nome" type="text" required />
-        <label>Cognome</label><input id="new-cognome" type="text" required />
-        <label>Email</label><input id="new-email" type="email" required />
-        <label>Password</label><input id="new-password" type="password" required />
-        <div class="actions">
-          <button type="submit" class="btn btn--admin">Crea Utenza</button>
-        </div>
-      </form>
-    </section>
-
-  </main>
-
-  <footer>
-    &copy; 2024 AC Tuscolano. Gestione Dati by Firebase.
-  </footer>
-
-  <div id="bottom-nav">
-    <button id="mobile-rosa-tab" class="tab" data-target="rosa-section" onclick="showPublicSection('rosa-section')">Rosa</button>
-    <button id="mobile-calendario-tab" class="tab" data-target="calendario-section" onclick="showPublicSection('calendario-section')">Partite</button>
-    <button id="mobile-classifica-tab" class="tab" data-target="classifica-section" onclick="showPublicSection('classifica-section')">Classifica</button>
-    <button id="mobile-statistiche-tab" class="tab" data-target="statistiche-section" onclick="showPublicSection('statistiche-section')">Statistiche</button>
-    <button id="mobile-video-tab" class="tab" data-target="video-section" onclick="showPublicSection('video-section')">Video</button>
-    <button id="mobile-auth-toggle-btn" class="btn" onclick="handleAuthToggle()">Login</button>
+<header>
+<div class="hero" role="banner">
+<img alt="Logo AC Tuscolano" src="Logo.png"/>
+<div class="brand">
+<h1 class="club">AC Tuscolano</h1>
+<p class="tag">Football Club</p>
 </div>
-
+</div>
+</header>
+<nav aria-label="Navigazione principale">
+<div class="nav-wrap">
+<button aria-current="page" class="tab" data-target="rosa-section" id="rosa-tab" onclick="showPublicSection('rosa-section')">La nostra Rosa</button>
+<button class="tab" data-target="calendario-section" id="calendario-tab" onclick="showPublicSection('calendario-section')">Calendario &amp; Partite</button>
+<button class="tab" data-target="classifica-section" id="classifica-tab" onclick="showPublicSection('classifica-section')">Classifica</button>
+<button class="tab" data-target="statistiche-section" id="statistiche-tab" onclick="showPublicSection('statistiche-section')">Statistiche &amp; Voti</button>
+<button class="tab" data-target="video-section" id="video-tab" onclick="showPublicSection('video-section')">Video</button>
+<a class="tab" href="https://www.romatornei.it/calcio-a-8-over-40-roma-sud" style="text-decoration:none;" target="_blank">Torneo</a>
+<button class="btn" id="auth-toggle-btn" onclick="handleAuthToggle()">Login</button>
+</div>
+</nav>
+<div id="admin-menu">
+<div class="nav-wrap" style="max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px;">
+<button class="tab" data-admin-target="admin-inserimento-giocatori-section" onclick="showAdminSection('admin-inserimento-giocatori-section')">Nuovo Giocatore</button>
+<button class="tab" data-admin-target="admin-inserimento-giornate-section" onclick="showAdminSection('admin-inserimento-giornate-section')">Nuova Partita</button>
+<button class="tab" data-admin-target="admin-calendario-section" onclick="showAdminSection('admin-calendario-section')">Formaz./Voti/Cand.</button>
+<button class="tab" data-admin-target="admin-video-section" onclick="showAdminSection('admin-video-section')">Gestione Video</button>
+<button class="tab" data-admin-target="admin-classifica-section" onclick="showAdminSection('admin-classifica-section')">Aggiorna Classifica</button>
+<button class="tab" data-admin-target="admin-gestione-dati-section" onclick="showAdminSection('admin-gestione-dati-section')">CRUD Dati</button>
+<button class="tab" data-admin-target="admin-utenti-section" onclick="showAdminSection('admin-utenti-section')">Gestione Utenti</button>
+</div>
+</div>
+<main>
+<section class="content-section" id="login-section">
+<h2>Login Amministratore</h2>
+<form id="login-form">
+<label>Email</label><input id="login-email" required="" type="email"/>
+<label>Password</label><input id="login-password" required="" type="password"/>
+<div class="actions">
+<button class="btn btn--accent" type="submit">Accedi</button>
+</div>
+</form>
+</section>
+<section class="content-section active" id="rosa-section">
+<h2>La nostra Rosa</h2>
+<div class="help">Lista dei giocatori, ruolo e stato. Ordinati per numero di maglia.</div>
+<ul id="rosa-list"></ul>
+</section>
+<section class="content-section" id="calendario-section">
+<h2>Calendario &amp; Partite</h2>
+<div class="help">Lista ordinata dalla partita più recente. Clicca su "Candidatura" per confermare la disponibilità.</div>
+<ul class="grid cols-3" id="calendario-list"></ul>
+</section>
+<section class="content-section" id="classifica-section">
+<h2>Classifica</h2>
+<div id="classifica-content" style="overflow-x:auto;">
+</div>
+</section>
+<section class="content-section" id="statistiche-section">
+<h2>Prestazioni</h2>
+<h3>Risultati squadra</h3>
+<div class="help">Lista ordinata dalla partita più recente.</div>
+<ul id="statistiche-risultati-list">
+</ul>
+<div id="prestazioni-aggregate-content">
+<h3>Riepilogo Giocatori</h3>
+<div class="help">Calcolo media voti e goal in corso…</div>
+</div>
+</section>
+<section class="content-section" id="video-section">
+<h2>Video Partite Concluse</h2>
+<ul id="video-list-ul" style="display:grid; gap:16px;">
+</ul>
+</section>
+<section class="content-section" id="formazione-pubblica-section">
+<h2>Formazione Ufficiale</h2>
+<div id="formazione-pubblica-content"></div>
+<div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
+</section>
+<section class="content-section" id="prestazioni-partita-section">
+<h2>Prestazioni Partita</h2>
+<div id="prestazioni-partita-content"></div>
+<div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
+</section>
+<section class="content-section" id="admin-inserimento-giocatori-section">
+<h2>Admin · Inserimento giocatori</h2>
+<form id="giocatore-form" onsubmit="window.addPlayer(event)">
+<label>Nome</label><input id="giocatore-nome" required=""/>
+<label>Cognome</label><input id="giocatore-cognome" required=""/>
+<label>Numero Maglia</label><input id="giocatore-numero" max="99" min="1" required="" type="number"/>
+<label>Ruolo</label>
+<select id="giocatore-ruolo" required="">
+<option value="">Seleziona ruolo</option>
+<option>Portiere</option>
+<option>Terzino sinistro</option>
+<option>Terzino destro</option>
+<option>Difensore centrale</option>
+<option>Centrocampista centrale</option>
+<option>Centrocampista sinistro</option>
+<option>Centrocampista destro</option>
+<option>Attaccante centrale</option>
+</select>
+<label>Stato Iniziale</label>
+<select id="giocatore-stato" required="">
+<option>Titolare</option>
+<option>Riserva</option>
+</select>
+<div class="actions">
+<button class="btn btn--accent" type="submit">Aggiungi Giocatore</button>
+</div>
+</form>
+<div class="help" style="margin-top:10px">I nuovi giocatori non appaiono subito nella rosa pubblica finché non ricarichi la pagina o usi la sezione CRUD.</div>
+</section>
+<section class="content-section" id="admin-inserimento-giornate-section">
+<h2>Admin · Inserimento giornate</h2>
+<form id="match-form" onsubmit="window.addMatch(event)">
+<div class="grid cols-2">
+<div><label>Data (gg/mm/aaaa)</label><input id="match-data" required=""/></div>
+<div><label>Ora (hh:mm)</label><input id="match-orario" placeholder="18:00" type="time"/></div>
+</div>
+<label>Avversaria</label><input id="match-avversaria" required=""/>
+<label>Campo di Gioco</label><input id="match-campo" required=""/>
+<label>Partita in Casa/Trasferta</label>
+<select id="match-casa-trasferta" required="">
+<option value="true">Casa</option>
+<option value="false">Trasferta</option>
+</select>
+<div class="actions">
+<button class="btn btn--accent" type="submit">Aggiungi Partita</button>
+</div>
+</form>
+</section>
+<section class="content-section" id="admin-calendario-section">
+<h2>Admin · Gestione Partite</h2>
+<div class="help">Lista ordinata dalla partita più recente. Puoi inserire formazioni, risultati e valutazioni.</div>
+<ul class="grid cols-3" id="admin-calendario-list"></ul>
+</section>
+<section class="content-section" id="admin-classifica-section">
+<h2>Admin · Gestione Classifica</h2>
+<div class="help">Aggiorna la classifica prendendola dal sito esterno romatornei.it e salvala nel database per la visualizzazione pubblica.</div>
+<div class="actions">
+<button class="btn btn--accent" onclick="updateClassificaFromSito()">Aggiorna Classifica Ora</button>
+</div>
+<div id="classifica-risultato-update" style="margin-top:10px;"></div>
+</section>
+<section class="content-section" id="admin-statistiche-section">
+<h2>Admin · Inserimento Risultato/Video</h2>
+<div id="risultato-form-container"></div>
+<div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+</section>
+<section class="content-section" id="admin-formazione-section">
+<h2>Admin · Inserimento Formazione</h2>
+<div id="formazione-form-container"></div>
+<div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+</section>
+<section class="content-section" id="admin-candidature-section">
+<h2>Admin · Gestione Candidature</h2>
+<div id="candidature-list"></div>
+<div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+</section>
+<section class="content-section" id="admin-prestazioni-partita-section">
+<h2>Admin · Valutazione Prestazioni</h2>
+<div id="prestazioni-form-container"></div>
+<div class="actions" style="margin-top:10px"><button class="btn" onclick="showAdminSection('admin-calendario-section')">Torna al calendario Admin</button></div>
+</section>
+<section class="content-section" id="admin-gestione-dati-section">
+<h2>Admin · Gestione dati</h2>
+<div class="card" style="margin-bottom:14px">
+<div class="row">
+<button aria-current="page" class="tab" onclick="document.getElementById('crud-giocatori').style.display='block';document.getElementById('crud-partite').style.display='none';document.getElementById('crud-candidature').style.display='none';loadCrudGiocatori()">Giocatori</button>
+<button class="tab" onclick="document.getElementById('crud-giocatori').style.display='none';document.getElementById('crud-partite').style.display='block';document.getElementById('crud-candidature').style.display='none';loadCrudPartite()">Partite</button>
+<button class="tab" onclick="document.getElementById('crud-giocatori').style.display='none';document.getElementById('crud-partite').style.display='none';document.getElementById('crud-candidature').style.display='block'">Candidature (dati)</button>
+</div>
+</div>
+<div id="crud-giocatori" style="display:block">
+<h3>Gestione Giocatori</h3>
+<div style="overflow-x:auto;">
+<table class="table">
+<thead><tr><th>Nome</th><th>Cognome</th><th>Num.</th><th>Ruolo</th><th>Stato</th><th>Pres.</th><th>Azioni</th></tr></thead>
+<tbody id="crud-giocatori-body"></tbody>
+</table>
+<div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva ed Elimina sono placeholder e non funzionano.</div>
+</div>
+</div>
+<div id="crud-partite" style="display:none">
+<h3>Gestione Partite</h3>
+<div style="overflow-x:auto;">
+<table class="table">
+<thead><tr><th>Data</th><th>Ora</th><th>Avversaria</th><th>Risultato</th><th>Campo</th><th>Casa?</th><th>Azioni</th></tr></thead>
+<tbody id="crud-partite-body"></tbody>
+</table>
+<div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva ed Elimina sono placeholder e non funzionano.</div>
+</div>
+</div>
+<div id="crud-candidature" style="display:none">
+<h3>Candidature per Partita</h3>
+<label>Seleziona Partita</label>
+<select id="crud-candidature-select" onchange="loadCandidatureForMatch(this.value)">
+<option value="">Seleziona una partita...</option>
+</select>
+<div class="card" id="crud-candidature-panel" style="margin-top:14px; display:none;">
+<div style="overflow-x:auto;">
+<table class="table">
+<thead><tr><th>Giocatore</th><th>Utente ID</th><th>Candidato</th></tr></thead>
+<tbody id="crud-candidature-body"></tbody>
+</table>
+</div>
+<div class="actions" style="margin-top:14px">
+<button class="btn btn--accent" id="crud-candidature-save">Salva Candidature</button>
+<button class="btn" onclick="closeCandidatureEditor()">Chiudi</button>
+</div>
+</div>
+<div class="help" style="margin-top:10px;">**Azioni:** I pulsanti Salva e Chiudi sono placeholder e non funzionano.</div>
+</div>
+</section>
+<section class="content-section" id="admin-utenti-section">
+<h2>Admin · Creazione Utente</h2>
+<form id="create-user-form">
+<label>Nome</label><input id="new-nome" required=""/>
+<label>Cognome</label><input id="new-cognome" required=""/>
+<label>Email (per login)</label><input id="new-email" required="" type="email"/>
+<label>Password (temporanea)</label><input id="new-password" required="" type="text"/>
+<div class="actions">
+<button class="btn btn--accent" type="submit">Crea Utente</button>
+</div>
+</form>
+<div class="help">L’admin resta connesso durante la creazione grazie all’autenticazione secondaria.</div>
+</section>
+<section class="content-section" id="admin-video-section">
+<h2>Admin · Gestione Video</h2>
+<div class="help">Inserisci o aggiorna il link YouTube di una partita conclusa.</div>
+<label>Seleziona Partita</label>
+<select id="video-partita-select"></select>
+<label>Link YouTube</label>
+<input id="video-link-input" placeholder="https://www.youtube.com/watch?v=..."/>
+<div class="actions">
+<button class="btn btn--accent" disabled="" id="save-video-btn" type="button">Salva Link Video</button>
+</div>
+</section>
+</main>
+<div aria-label="Navigazione mobile principale" id="bottom-nav" role="navigation">
+<button aria-current="page" class="tab" data-target="rosa-section" id="mobile-rosa-tab" onclick="showPublicSection('rosa-section')">Rosa</button>
+<button class="tab" data-target="calendario-section" id="mobile-calendario-tab" onclick="showPublicSection('calendario-section')">Partite</button>
+<button class="tab" data-target="classifica-section" id="mobile-classifica-tab" onclick="showPublicSection('classifica-section')">Classifica</button>
+<button class="tab" data-target="statistiche-section" id="mobile-statistiche-tab" onclick="showPublicSection('statistiche-section')">Statistiche</button>
+<button class="tab" data-target="video-section" id="mobile-video-tab" onclick="showPublicSection('video-section')">Video</button>
+<button class="btn" id="mobile-auth-toggle-btn" onclick="handleAuthToggle()">Login</button>
+</div>
 <div id="video-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; align-items: center; justify-content: center; padding: 20px;">
-  <div style="background:var(--ink); padding:0; border-radius:var(--radius); width:90%; max-width:800px; position:relative;">
-    <button id="close-video-modal" class="btn btn--accent" type="button" style="position:absolute; top:-10px; right:-10px; z-index:110; font-size:1.2rem; line-height:1.2;">X</button>
-    <div id="video-iframe-container" style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; border-radius: var(--radius); overflow: hidden;">
-        </div>
-  </div>
+<div style="background:var(--ink); padding:0; border-radius:var(--radius); width:90%; max-width:800px; position:relative;">
+<button class="btn btn--accent" id="close-video-modal" style="position:absolute; top:-10px; right:-10px; z-index:110; font-size:1.2rem; line-height:1.2;" type="button">X</button>
+<div id="video-iframe-container" style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; border-radius: var(--radius); overflow: hidden;">
 </div>
+</div>
+</div>
+<footer>© 2024 AC Tuscolano | Gestione Squadra</footer>
 
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+  var firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "actuscolano-default-rtdb.firebaseapp.com",
+    databaseURL: "https://actuscolano-default-rtdb.firebaseio.com",
+    projectId: "actuscolano-default-rtdb",
+    storageBucket: "actuscolano-default-rtdb.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.database();
+
+  function populateCandidati(matchId, containerId) {
+    var rosaRef = db.ref("/rosa");
+    var utentiRef = db.ref("/utenti");
+    var candidatureRef = db.ref("/calendario/" + matchId + "/candidature");
+
+    Promise.all([
+      rosaRef.once("value"),
+      utentiRef.once("value"),
+      candidatureRef.once("value")
+    ]).then(function([rosaSnap, utentiSnap, candidatureSnap]) {
+      var rosa = rosaSnap.val();
+      var utenti = utentiSnap.val();
+      var candidature = candidatureSnap.val();
+
+      if (!candidature) return;
+
+      var container = document.getElementById(containerId);
+      var table = document.createElement("table");
+      table.style.margin = "auto";
+      table.style.textAlign = "center";
+      table.innerHTML = "<tr><th>Nome/Cognome</th><th>Ruolo</th><th>Stato</th></tr>";
+
+      Object.keys(candidature).forEach(function(playerId) {
+        var player = rosa[playerId];
+        var user = utenti[playerId];
+        var stato = candidature[playerId].stato || "N/A";
+        if (player && user) {
+          var row = document.createElement("tr");
+          row.innerHTML = "<td>" + user.nome + " " + user.cognome + "</td><td>" + player.ruolo + "</td><td>" + stato + "</td>";
+          table.appendChild(row);
+        }
+      });
+
+      container.appendChild(table);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    populateCandidati("OcHH1dWuePLDYRvo8Iy", "match-OcHH1dWuePLDYRvo8Iy");
+  });
+</script>
 </body>
 </html>
