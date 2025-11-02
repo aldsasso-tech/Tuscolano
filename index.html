@@ -1675,8 +1675,7 @@
     const nameIndex = {};
     for (const [uid, u] of Object.entries(utenti)) {
       const key = norm(u.nome) + '|' + norm(u.cognome);
-      // se collisione, il primo vince: va bene per uso runtime (non persistiamo)
-      if (!nameIndex[key]) nameIndex[key] = uid;
+      if (!nameIndex[key]) nameIndex[key] = uid; // prima corrispondenza vince (solo runtime)
     }
 
     const rows = Object.entries(rosa).sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
@@ -1706,8 +1705,9 @@
 
     tbody.innerHTML = htmlRows || '<tr><td colspan="3">Nessun giocatore in rosa.</td></tr>';
 
-    // Pulsante Salva (resta placeholder, coerente con il resto del file)
-    byId('crud-candidature-save').onclick = () => alert(`Funzione per salvare le candidature per la partita ${matchId} da implementare.`);
+    // Pulsante Salva (placeholder, coerente con il resto del file)
+    const saveBtn = byId('crud-candidature-save');
+    if (saveBtn) saveBtn.onclick = () => alert(`Funzione per salvare le candidature per la partita ${matchId} da implementare.`);
 
   } catch(e) {
     console.error("Errore caricamento Candidature CRUD:", e);
