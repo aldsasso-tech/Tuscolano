@@ -1433,7 +1433,7 @@ window.showFormazioneForm = async function(matchId, avv, formazioneJsonString){
 
     const benchSize = Math.min(8, Math.max(4, Math.max(0, candidati.length - 8)));
 // set panchina runtime store
-let selectedPanchinaSet = new Set(panchinaSaved);
+window._selectedPanchinaSet = new Set(panchinaSaved);
 
 // funzione render lista panchina
 function renderPanchinaList(){
@@ -1456,7 +1456,7 @@ function renderPanchinaList(){
   const benchCandidates = candidati.filter(pl => !titolariUsati.has(pl.uid));
 
   el.innerHTML = benchCandidates.map(pl => {
-    const active = selectedPanchinaSet.has(pl.uid);
+    const active = window._selectedPanchinaSet.has(pl.uid);
     return `
       <div class="card" data-uid="${pl.uid}" style="padding:8px; margin-bottom:6px; cursor:pointer; border:1px solid ${active?'#0a0':'#444'};">
         <b>${escapeHtml(pl.cognome)} ${escapeHtml(pl.nome)}</b> (#${pl.numero} - ${pl.ruolo||'—'})
@@ -1468,8 +1468,8 @@ function renderPanchinaList(){
   el.querySelectorAll('[data-uid]').forEach(node=>{
     node.onclick = ()=>{
       const uid = node.getAttribute('data-uid');
-      if(selectedPanchinaSet.has(uid)) selectedPanchinaSet.delete(uid);
-      else selectedPanchinaSet.add(uid);
+     if(window._selectedPanchinaSet.has(uid)) window._selectedPanchinaSet.delete(uid);
+else window._selectedPanchinaSet.add(uid);
       renderPanchinaList();
     }
   });
@@ -1556,7 +1556,7 @@ window.saveFormazione = async function(matchId){
     };
 
     // Panchina (multi)
-    const panchina = Array.from(selectedPanchinaSet);
+    const panchina = Array.from(window._selectedPanchinaSet);
 
     // Candidati TRUE della partita
     const snapCand = await get(ref(db, `calendario/${matchId}/candidature`));
