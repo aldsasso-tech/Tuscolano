@@ -1913,16 +1913,6 @@ tit = newFormat;
     pl = rosa[id];
   }
 
-  const pos = POS_331[slot];
-  if (pl && pos){
-    html.push(`
-      <div class="marker" style="top:${pos.top}; left:${pos.left};">
-        <b>${escapeHtml(pl.cognome)}</b><br>${escapeHtml(pl.nome)}
-      </div>
-    `);
-  }
-});
-
     const pos = POS_331[slot];
     if(pl && pos){
       html.push(`
