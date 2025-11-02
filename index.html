@@ -1501,6 +1501,23 @@ else window._selectedPanchinaSet.add(uid);
   <div class="help">Tocca i giocatori per inserirli / rimuoverli dalla panchina.</div>
 </fieldset>
 
+<fieldset class="card" style="margin-bottom:12px; padding:8px;">
+  <legend>Pianificazione Sostituzioni (Equal time)</legend>
+  <div class="form-row" style="gap:12px; align-items:center;">
+    <label class="form-row" style="margin:0;">
+      <span class="form-label">Giocatori alla volta</span>
+      <select id="subs-blocco" class="form-input">
+        <option value="1">1 alla volta</option>
+        <option value="2">2 alla volta</option>
+      </select>
+    </label>
+    <button type="button" id="btn-genera-sostituzioni" class="btn">Genera piano</button>
+    <button type="button" id="btn-salva-sostituzioni" class="btn btn--accent">Salva Sostituzioni</button>
+  </div>
+  <div class="help">Il portiere è escluso; il tempo totale in campo dei giocatori di movimento sarà distribuito il più equamente possibile (differenza ≤ 1’).</div>
+  <div id="subs-editor" style="margin-top:10px;"></div>
+</fieldset>
+
         <div class="actions">
           <button type="submit" class="btn btn--accent">Salva Formazione</button>
           <button type="button" id="btn-pubblica-formazione" class="btn">Pubblica Formazione</button>
@@ -1508,6 +1525,220 @@ else window._selectedPanchinaSet.add(uid);
       </form>
     `;
 renderPanchinaList();
+
+// ====== SOSTITUZIONI: Equal-Time Planner ======
+const subsEditor = byId('subs-editor');
+window._subsPlan = Array.isArray(match.sostituzioni) ? [...match.sostituzioni] : []; // mantieni eventuali sostituzioni esistenti
+
+// mappa uid -> info utili
+const uidInfo = {};
+players.forEach(p => { if (p.uid) uidInfo[p.uid] = p; });
+
+// render editor tabellare con possibilità di modifica
+function renderSubsEditor(){
+  const plan = window._subsPlan || [];
+  if (!plan.length){
+    subsEditor.innerHTML = `<div class="help">Nessuna sostituzione pianificata. Premi "Genera piano".</div>`;
+    return;
+  }
+
+  const partecipanti = getPartecipantiOutfield(); // tutti i giocatori di movimento titolari+panchina (uid), ordinati per numero
+  const opts = partecipanti.map(uid=>{
+    const pl = uidInfo[uid];
+    return `<option value="${uid}">${escapeHtml(pl.cognome)} ${escapeHtml(pl.nome)} (#${pl.numero||'-'})</option>`;
+  }).join('');
+
+  const rows = plan.map((s, idx)=>`
+    <tr>
+      <td><input type="number" min="0" max="49" value="${s.minuto}" data-idx="${idx}" class="subs-minute form-input" style="width:80px"/></td>
+      <td>
+        <select class="subs-esce form-input" data-idx="${idx}">
+          ${opts}
+        </select>
+      </td>
+      <td>
+        <select class="subs-entra form-input" data-idx="${idx}">
+          ${opts}
+        </select>
+      </td>
+      <td><button type="button" class="btn" data-remove="${idx}">Rimuovi</button></td>
+    </tr>
+  `).join('');
+
+  subsEditor.innerHTML = `
+    <div class="card" style="padding:8px;">
+      <table class="table" style="width:100%">
+        <thead><tr><th>Min</th><th>Esce</th><th>Entra</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+
+  // set valori selects
+  const tbody = subsEditor.querySelector('tbody');
+  plan.forEach((s, idx)=>{
+    const esceSel  = tbody.querySelector(`.subs-esce[data-idx="${idx}"]`);
+    const entraSel = tbody.querySelector(`.subs-entra[data-idx="${idx}"]`);
+    if (esceSel)  esceSel.value  = s.esce || '';
+    if (entraSel) entraSel.value = s.entra || '';
+  });
+
+  // bind listeners
+  subsEditor.querySelectorAll('.subs-minute').forEach(inp=>{
+    inp.onchange = (e)=>{
+      const i = parseInt(inp.getAttribute('data-idx'),10);
+      window._subsPlan[i].minuto = Math.max(0, Math.min(49, parseInt(inp.value||'0',10)));
+    };
+  });
+  subsEditor.querySelectorAll('.subs-esce').forEach(sel=>{
+    sel.onchange = ()=>{ const i = parseInt(sel.getAttribute('data-idx'),10); window._subsPlan[i].esce = sel.value; };
+  });
+  subsEditor.querySelectorAll('.subs-entra').forEach(sel=>{
+    sel.onchange = ()=>{ const i = parseInt(sel.getAttribute('data-idx'),10); window._subsPlan[i].entra = sel.value; };
+  });
+  subsEditor.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const i = parseInt(btn.getAttribute('data-remove'),10);
+      window._subsPlan.splice(i,1);
+      renderSubsEditor();
+    };
+  });
+}
+
+// utility: prendi titolari outfield + panchina (escludi portiere)
+function getPartecipantiOutfield(){
+  const tit = {
+    portiere: byId('slot-portiere')?.value || '',
+    d1: byId('slot-d1')?.value || '',
+    d2: byId('slot-d2')?.value || '',
+    d3: byId('slot-d3')?.value || '',
+    c1: byId('slot-c1')?.value || '',
+    c2: byId('slot-c2')?.value || '',
+    c3: byId('slot-c3')?.value || '',
+    attaccante: byId('slot-attaccante')?.value || ''
+  };
+  const startersOut = [tit.d1,tit.d2,tit.d3,tit.c1,tit.c2,tit.c3,tit.attaccante].filter(Boolean);
+  const bench = Array.from(window._selectedPanchinaSet || new Set());
+  // UID unici
+  const set = new Set([...startersOut, ...bench]);
+  const arr = [...set];
+  // ordina per numero maglia
+  arr.sort((a,b)=> (uidInfo[a]?.numero||0) - (uidInfo[b]?.numero||0));
+  return arr;
+}
+
+// Generatore equal-time (greedy, minuti interi, 7 on-field, blocchi 1 o 2 giocatori)
+function generaSostituzioniAutomatiche(blocco){
+  const partecipanti = getPartecipantiOutfield(); // UID outfield
+  const starters = [
+    byId('slot-d1')?.value, byId('slot-d2')?.value, byId('slot-d3')?.value,
+    byId('slot-c1')?.value, byId('slot-c2')?.value, byId('slot-c3')?.value,
+    byId('slot-attaccante')?.value
+  ].filter(Boolean);
+  const bench = partecipanti.filter(uid => !starters.includes(uid));
+
+  const K = 7;               // giocatori di movimento in campo
+  const TOT = 50;            // minuti gara
+  const FIELD_MIN = TOT * K; // 350
+
+  const Nout = partecipanti.length; // giocatori di movimento totali
+  if (Nout <= 7) {
+    // nessuna sostituzione necessaria
+    window._subsPlan = [];
+    renderSubsEditor();
+    return;
+  }
+
+  // TARGET minuti per giocatore: distribuzione base +1 ai primi r del sort per numero maglia
+  const base = Math.floor(FIELD_MIN / Nout);
+  let r = FIELD_MIN % Nout;
+
+  const targets = {}; // uid -> target minuti
+  partecipanti.forEach(uid=>{
+    const extra = (r>0) ? 1 : 0;
+    targets[uid] = base + extra;
+    r -= extra;
+  });
+
+  // stato simulazione
+  let tPrev = 0;
+  const played = {}; partecipanti.forEach(uid=> played[uid]=0);
+  let onField = starters.slice(); // 7 uid
+  let onBench = bench.slice();    // restanti
+  const events = [];
+
+  // numero eventi = ceil(bench/blocco)
+  const evCount = Math.max(1, Math.ceil(onBench.length / Math.max(1,blocco)));
+  // tempi degli eventi (equidistanti, escluso 0 e 50)
+  const times = [];
+  for (let k=1; k<=evCount; k++){
+    const mk = Math.round((TOT * k) / (evCount + 1));
+    if (mk>0 && mk<TOT && !times.includes(mk)) times.push(mk);
+  }
+  times.sort((a,b)=>a-b);
+
+  function advance(toMinute){
+    const dt = Math.max(0, toMinute - tPrev);
+    onField.forEach(uid => played[uid] += dt);
+    tPrev = toMinute;
+  }
+
+  function surplus(uid){ return played[uid] - (targets[uid]||0); }
+  function deficit(uid){ return (targets[uid]||0) - played[uid]; }
+
+  // eventi programmati
+  times.forEach(min=>{
+    advance(min);
+
+    // scegli chi esce: quelli con maggior surplus (o minor deficit), tra onField
+    const candOut = onField.slice().sort((a,b)=>{
+      const sa = surplus(a), sb = surplus(b);
+      if (sb !== sa) return sb - sa;
+      return (uidInfo[b]?.numero||0) - (uidInfo[a]?.numero||0); // in parità, esce chi ha numero più alto
+    });
+
+    // scegli chi entra: maggiore deficit tra bench
+    const candIn = onBench.slice().sort((a,b)=>{
+      const da = deficit(a), db = deficit(b);
+      if (db !== da) return db - da;
+      return (uidInfo[a]?.numero||0) - (uidInfo[b]?.numero||0); // in parità, entra chi ha numero più basso
+    });
+
+    const n = Math.min(blocco, candOut.length, candIn.length);
+    for (let i=0;i<n;i++){
+      const esce = candOut[i];
+      const entra = candIn[i];
+      // swap
+      onField = onField.filter(u => u !== esce);
+      onField.push(entra);
+      onBench = onBench.filter(u => u !== entra);
+      onBench.push(esce);
+
+      events.push({ minuto:min, esce, entra });
+    }
+  });
+
+  // chiudi fino a 50'
+  advance(TOT);
+
+  // Piccolo fix: se qualcuno ha giocato (played- target) > 1 o < -1, si può aggiustare manualmente: mostriamo e lasciamo edit.
+  window._subsPlan = events;
+  renderSubsEditor();
+}
+
+// bind bottoni piano sostituzioni
+byId('btn-genera-sostituzioni').onclick = ()=>{
+  const blocco = parseInt(byId('subs-blocco').value, 10) || 1;
+  generaSostituzioniAutomatiche(blocco);
+};
+byId('btn-salva-sostituzioni').onclick = ()=>{
+  window.saveSostituzioni(matchId);
+};
+
+// se c'erano sostituzioni già salvate, mostra editor
+renderSubsEditor();
+
+    
     // Preselezioni titolari e panchina
     const setVal = (id, uid) => { const el = byId(`slot-${id}`); if (el && uid) el.value = uid; };
     setVal('portiere',   titolariSaved.portiere   || '');
@@ -1588,6 +1819,19 @@ window.pubblicaFormazione = async function(matchId){
   }
 };
 
+// ================== ADMIN: SAVE SOSTITUZIONI ==================
+window.saveSostituzioni = async function(matchId){
+  try {
+    const plan = Array.isArray(window._subsPlan) ? window._subsPlan : [];
+    // valida basic: minuto int [0..49], uid non vuoti e diversi
+    const valid = plan.filter(s => Number.isInteger(s.minuto) && s.minuto>=0 && s.minuto<=49 && s.esce && s.entra && s.esce !== s.entra);
+    await update(ref(db, `calendario/${matchId}`), { sostituzioni: valid });
+    alert('Sostituzioni salvate.');
+  } catch(e) {
+    console.error('Errore salvataggio sostituzioni:', e);
+    alert('Errore durante il salvataggio delle sostituzioni.');
+  }
+};
 
 
     
