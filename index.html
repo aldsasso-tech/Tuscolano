@@ -853,6 +853,7 @@
 
     /**
      * FUNZIONE loadProssimeGiornate (AGGIORNATA PER LISTA CANDIDATI)
+     * IMPLEMENTAZIONE FIX: Struttura più chiara per l'elenco dei candidati.
      */
     window.loadProssimeGiornate = async function(asAdmin){
       const listId = asAdmin ? 'admin-calendario-list' : 'calendario-list';
@@ -899,11 +900,11 @@
           prestazioniBtn = `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
         }
 
-        // *** LOGICA PER LISTA CANDIDATI PUBBLICA ***
+        // *** LOGICA PER LISTA CANDIDATI PUBBLICA (FIX IMPLEMENTATO QUI) ***
         let candidatiListHtml = '';
         if (!asAdmin && !risultatoValido) { // Se è sezione pubblica e NON c'è risultato
             if (candCount > 0) {
-                let playersHtml = '';
+                let playersHtml = '<ul style="list-style:none; padding:0; margin:0; display:grid; gap:4px;">';
                 
                 const candidatiIds = Object.keys(cand).filter(pid => cand[pid] === true);
                 
@@ -912,17 +913,28 @@
                     .filter(p => p !== null)
                     .sort((a, b) => (a.numero || 0) - (b.numero || 0));
 
-                playersHtml = sortedCandidati.map(p => {
+                playersHtml += sortedCandidati.map(p => {
+                    const nome = escapeHtml(p.nome || '?');
+                    const cognome = escapeHtml(p.cognome || '?');
+                    const ruolo = escapeHtml(p.ruolo || 'Ruolo N/D');
+                    const stato = escapeHtml(p.stato || 'Stato N/D');
+
                     // Stile pillola per lo stato (Titolare/Riserva)
-                    const statusPill = `<span class="pill" style="margin-left:5px; font-size:.7rem; background:#ccc; color:#333; padding:2px 6px;">${escapeHtml(p.stato)}</span>`;
-                    const ruoloDisplay = p.ruolo ? `(${escapeHtml(p.ruolo)})` : '';
+                    const statusPill = `<span class="pill" style="margin-left:5px; font-size:.7rem; background:#ccc; color:#333; padding:2px 6px;">${stato}</span>`;
+                    
                     return `
-                        <div style="font-size:0.9rem; line-height:1.2; margin-top:4px;">
-                            ${escapeHtml(p.nome)} <b>${escapeHtml(p.cognome)}</b> ${ruoloDisplay}
-                            ${statusPill}
-                        </div>
+                        <li style="border-bottom:1px dotted #eee; padding-bottom:4px; line-height:1.2;">
+                            <div style="font-size:0.95rem; font-weight:700;">
+                                ${nome} <b>${cognome}</b>
+                            </div>
+                            <div style="font-size:0.85rem; color:var(--ink-sub);">
+                                Ruolo: ${ruolo} ${statusPill}
+                            </div>
+                        </li>
                     `;
                 }).join('');
+                
+                playersHtml += '</ul>';
                 
                 candidatiListHtml = `
                     <div style="margin-top:8px; border-top:1px solid var(--line); padding-top:8px;">
@@ -934,7 +946,7 @@
                 candidatiListHtml = `<div class="pill" style="margin-top:8px; font-size:0.85rem;">Nessuna disponibilità confermata.</div>`;
             }
         }
-        // *** FINE LOGICA PER LISTA CANDIDATI PUBBLICA ***
+        // *** FINE LOGICA PER LISTA CANDIDATI PUBBLICA (FIX IMPLEMENTATO QUI) ***
 
         // NUOVA LOGICA: Calcolo Esito per display in Calendario
         let esitoPill = '';
@@ -1284,7 +1296,7 @@
         const prestazioni = snapPrests.val() || {};
         const match = snapMatch.val() || {};
         
-        // Determina quali giocatori erano candidati (o titolari/riserve) per la partita
+        // Determina quali giocatori erano candidati (ou titolari/riserve) per la partita
         const cand = match.candidature || {};
         const titolariIds = Object.values(match.formazioni?.['0']?.formazione || {});
         const panchinaIds = match.formazioni?.['0']?.panchina || [];
