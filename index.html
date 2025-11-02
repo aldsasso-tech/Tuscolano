@@ -615,22 +615,30 @@
               // DR (Differenza Reti) è l'ultima cella in genere (indice 9)
               const dr = cells[cells.length - 1]?.textContent.trim() || '0'; 
               
-              // 2. Stile per evidenziare AC Tuscolano (FIX: Regola di evidenziazione rafforzata)
-              const isTuscolano = squadra.toUpperCase().includes('AC TUSCOLANO');
-              const rowClass = isTuscolano 
-                  ? ' style="background:var(--yellow) !important; color:var(--ink) !important; font-weight:900;"' // Giallo brand
-                  : (index % 2 === 1 ? ' style="background:#f8f8f8;"' : '');
+              // 2. Stile per evidenziare AC Tuscolano (FIX: Regola di evidenziazione rafforzata, applicata alle TD)
+              // La condizione controlla se il nome contiene "TUSCOLANO" (più robusto)
+              const isTuscolano = squadra.toUpperCase().includes('TUSCOLANO');
+              const tuscolanoStyle = isTuscolano 
+                  ? 'background:var(--yellow) !important; color:var(--ink) !important; font-weight:900;' 
+                  : '';
+              
+              // Applica il colore zebra solo se non è AC Tuscolano
+              const rowStyle = index % 2 === 1 && !isTuscolano ? ' style="background:#f8f8f8;"' : '';
+              
+              // Stile per le singole celle (se Tuscolano)
+              const cellStyle = isTuscolano ? ` style="${tuscolanoStyle}"` : '';
+
 
               tableBodyHtml += `
-                  <tr${rowClass}>
-                      <td style="text-align:center;">${pos}</td>
-                      <td style="font-weight:700;">${escapeHtml(squadra)}</td>
-                      <td style="text-align:center;"><b>${punti}</b></td>
-                      <td style="text-align:center; color:var(--ink-sub);">${giocate}</td>
-                      <td style="text-align:center; color:#0e7a0d;">${vinte}</td>
-                      <td style="text-align:center;">${pareggiate}</td>
-                      <td style="text-align:center; color:var(--red);">${perse}</td>
-                      <td style="text-align:center;">${dr}</td>
+                  <tr${rowStyle}>
+                      <td${cellStyle} style="text-align:center;">${pos}</td>
+                      <td${cellStyle} style="font-weight:700;">${escapeHtml(squadra)}</td>
+                      <td${cellStyle} style="text-align:center;"><b>${punti}</b></td>
+                      <td${cellStyle} style="text-align:center; color:var(--ink-sub);">${giocate}</td>
+                      <td${cellStyle} style="text-align:center; color:#0e7a0d;">${vinte}</td>
+                      <td${cellStyle} style="text-align:center;">${pareggiate}</td>
+                      <td${cellStyle} style="text-align:center; color:var(--red);">${perse}</td>
+                      <td${cellStyle} style="text-align:center;">${dr}</td>
                   </tr>
               `;
           });
@@ -969,6 +977,12 @@
                 const sortedCandidati = candidatiIds.map(pid => rosa[pid] ? { ...rosa[pid], id: pid } : null)
                     .filter(p => p !== null)
                     .sort((a, b) => (a.numero || 0) - (b.numero || 0));
+                
+                // --- DEBUG LOG ---
+                if (sortedCandidati.length === 0) {
+                    console.warn(`Partita ${matchId} (vs ${m.avversaria}): Trovate ${candCount} candidature, ma 0 giocatori corrispondenti nella Rosa. Controllare consistenza dati.`);
+                }
+                // --- FINE DEBUG LOG ---
 
                 let playersHtml = '<ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:2px; font-size:0.9rem;">';
                 
@@ -981,24 +995,28 @@
                     </li>
                 `;
 
-                playersHtml += sortedCandidati.map(p => {
-                    const nome = escapeHtml(p.nome || '?');
-                    const cognome = escapeHtml(p.cognome || '?');
-                    const ruolo = escapeHtml(p.ruolo || 'Ruolo N/D');
-                    const stato = escapeHtml(p.stato || 'Stato N/D'); // Stato da Rosa
-                    
-                    const statoColor = stato === 'Titolare' ? '#0e7a0d' : (stato === 'Riserva' ? 'var(--red)' : 'var(--ink-sub)');
-                    
-                    return `
-                        <li style="display:grid; grid-template-columns: 2fr 1.5fr 1fr; gap:8px; align-items:center; border-bottom:1px dotted #eee; padding:4px 0;">
-                            <div style="font-weight:700; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${nome} <b>${cognome}</b></div>
-                            <div style="color:var(--ink-sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.85rem;">${ruolo}</div>
-                            <div style="text-align:right;">
-                                <span class="pill" style="background:${statoColor}; color:#fff; padding:2px 6px; font-size:.75rem;">${stato}</span>
-                            </div>
-                        </li>
-                    `;
-                }).join('');
+                if (sortedCandidati.length > 0) {
+                    playersHtml += sortedCandidati.map(p => {
+                        const nome = escapeHtml(p.nome || '?');
+                        const cognome = escapeHtml(p.cognome || '?');
+                        const ruolo = escapeHtml(p.ruolo || 'Ruolo N/D');
+                        const stato = escapeHtml(p.stato || 'Stato N/D'); // Stato da Rosa
+                        
+                        const statoColor = stato === 'Titolare' ? '#0e7a0d' : (stato === 'Riserva' ? 'var(--red)' : 'var(--ink-sub)');
+                        
+                        return `
+                            <li style="display:grid; grid-template-columns: 2fr 1.5fr 1fr; gap:8px; align-items:center; border-bottom:1px dotted #eee; padding:4px 0;">
+                                <div style="font-weight:700; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${nome} <b>${cognome}</b></div>
+                                <div style="color:var(--ink-sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.85rem;">${ruolo}</div>
+                                <div style="text-align:right;">
+                                    <span class="pill" style="background:${statoColor}; color:#fff; padding:2px 6px; font-size:.75rem;">${stato}</span>
+                                </div>
+                            </li>
+                        `;
+                    }).join('');
+                } else {
+                     playersHtml += `<li style="padding:4px 0; color:var(--red); font-weight:600;">Nessun giocatore candidabile trovato nella rosa con l'ID corrispondente.</li>`;
+                }
                 
                 playersHtml += '</ul>';
                 
@@ -1222,7 +1240,7 @@
                 const votoNum = r.mediaVoto;
                 mediaVotoDisplay = `<b>${votoNum.toFixed(2)}</b>`;
                 // Calcolo barra
-                const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100)));
+                const perc = Math.max(0, Math.min(100, Math.round((votoNum/10)*100));
                 const color = (votoNum >= 7 ? 'green' : (votoNum >= 6 ? 'yellow' : 'red'));
                 bar = `
                   <div class="voto-bar-container">
