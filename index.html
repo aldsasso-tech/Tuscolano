@@ -1594,90 +1594,93 @@ window.pubblicaFormazione = async function(matchId){
     /**
      * FIX: Esposto a window per essere accessibile dall'onclick HTML
      */
-    window.showFormazionePubblica = async function(matchId, avv){
-      window.showPublicSection('formazione-pubblica-section');
-      const box = byId('formazione-pubblica-content');
-      box.innerHTML = 'Caricamento formazione...';
-      const [snapMatch, snapRosa] = await Promise.all([
-        get(ref(db, `calendario/${matchId}`)),
-        get(ref(db, 'rosa'))
-      ]);
-      const match = snapMatch.val() || {};
-      const rosa = snapRosa.val() || {};
-      
-      if(!match.formazionePubblicata || !match.formazioni || !match.formazioni['0']){
-        box.innerHTML = `<h2>Formazione vs ${escapeHtml(avv)}</h2><p>Formazione non ancora pubblicata.</p>`;
-        return;
-      }
-      
-      const titolariIniziali = match.formazioni['0'].formazione || {};
-      const panchinaIds = match.formazioni['0'].panchina || [];
-      const sostituzioni = match.sostituzioni || [];
-      
-      let html = [];
-      html.push(`<h2>Formazione vs ${escapeHtml(avv)}</h2>`);
-      
-      // 1. Titolari
-      html.push(`<h4>Titolari (Minuto 0)</h4>`);
-      html.push(`<div class="field" style="height:320px; position:relative;">`);
-      
-      const POS_331 = {
-        'Portiere': {top:'90%', left:'50%'},
-        'Terzino sinistro': {top:'65%', left:'20%'},
-        'Terzino destro': {top:'65%', left:'80%'},
-        'Difensore centrale': {top:'60%', left:'50%'},
-        'Centrocampista centrale': {top:'40%', left:'50%'},
-        'Centrocampista sinistro': {top:'30%', left:'20%'},
-        'Centrocampista destro': {top:'30%', left:'80%'},
-        'Attaccante centrale': {top:'10%', left:'50%'}
-      };
-      
-      Object.entries(titolariIniziali).forEach(([ruolo, pid]) => {
-        const pl = rosa[pid];
-        const pos = POS_331[ruolo];
-        if (pl && pos) {
-          html.push(`
-            <div class="marker" style="top:${pos.top}; left:${pos.left};">
-              <b>${escapeHtml(pl.cognome)}</b><br>${ruolo}
-            </div>
-          `);
-        }
-      });
-      html.push(`</div>`);
-      
-      // 2. Panchina
-      if (panchinaIds.length > 0) {
-        html.push(`<h4>Panchina</h4>`);
-        html.push(`<ul class="grid cols-3">`);
-        panchinaIds.forEach(pid => {
-          const pl = rosa[pid];
-          if (pl) {
-            html.push(`<li class="card"><b>${escapeHtml(pl.nome)} ${escapeHtml(pl.cognome)}</b> (#${pl.numero})</li>`);
-          }
-        });
-        html.push(`</ul>`);
-      }
-      
-      // 3. Sostituzioni
-      if (sostituzioni.length > 0) {
-        html.push(`<h4>Sostituzioni Effettuate</h4>`);
-        html.push(`<ul class="grid cols-2">`);
-        sostituzioni.forEach(s => {
-          // Trova nome giocatore
-          const plEntra = rosa[s.entra];
-          const plEsce = rosa[s.esce];
-          html.push(`
-            <li class="card">
-              <div style="font-weight:700">Minuto ${s.minuto}</div>
-              Entra: <b>${plEntra ? plEntra.cognome : '?'}</b> • Esce: <b>${plEsce ? plEsce.cognome : '?'}</b>
-            </li>
-          `);
-        });
-        html.push(`</ul>`);
-      }
-      
-      box.innerHTML = html.join('');
+window.showFormazionePubblica = async function(matchId, avv){
+  window.showPublicSection('formazione-pubblica-section');
+  const box = byId('formazione-pubblica-content');
+  box.innerHTML = 'Caricamento formazione...';
+
+  const [snapMatch, snapRosa] = await Promise.all([
+    get(ref(db, `calendario/${matchId}`)),
+    get(ref(db, 'rosa'))
+  ]);
+
+  const match = snapMatch.val() || {};
+  const rosa = snapRosa.val() || {};
+
+  if(!match.formazionePubblicata || !match.formazioni || !match.formazioni['0']){
+    box.innerHTML = `<h2>Formazione vs ${escapeHtml(avv)}</h2><p>Formazione non ancora pubblicata.</p>`;
+    return;
+  }
+
+  const tit = match.formazioni['0'].formazione || {};
+  const pan = match.formazioni['0'].panchina || [];
+  const sost = match.sostituzioni || [];
+
+  let html = [];
+  html.push(`<h2>Formazione vs ${escapeHtml(avv)}</h2>`);
+
+  // campo titolari (3-3-1)
+  html.push(`<h4>Titolari (Minuto 0)</h4>`);
+  html.push(`<div class="field" style="height:320px; position:relative;">`);
+
+  const POS_331 = {
+    'portiere':   {top:'90%', left:'50%'},
+    'd1':         {top:'65%', left:'20%'},
+    'd2':         {top:'65%', left:'50%'},
+    'd3':         {top:'65%', left:'80%'},
+    'c1':         {top:'40%', left:'20%'},
+    'c2':         {top:'40%', left:'50%'},
+    'c3':         {top:'40%', left:'80%'},
+    'attaccante': {top:'10%', left:'50%'}
+  };
+
+  Object.entries(tit).forEach(([slot, uid])=>{
+    const pl = Object.values(rosa).find(r=>r.uid === uid); 
+    const pos = POS_331[slot];
+    if(pl && pos){
+      html.push(`
+        <div class="marker" style="top:${pos.top}; left:${pos.left};">
+          <b>${escapeHtml(pl.cognome)}</b><br>${escapeHtml(pl.nome)}
+        </div>
+      `);
     }
+  });
+
+  html.push(`</div>`);
+
+  // panchina
+  if(pan.length > 0){
+    html.push(`<h4>Panchina</h4>`);
+    html.push(`<ul class="grid cols-3">`);
+    pan.forEach(uid=>{
+      const pl = Object.values(rosa).find(r=>r.uid === uid);
+      if(pl){
+        html.push(`<li class="card"><b>${escapeHtml(pl.nome)} ${escapeHtml(pl.cognome)}</b> (#${pl.numero||''})</li>`);
+      }
+    });
+    html.push(`</ul>`);
+  }
+
+  // sostituzioni
+  if(sost.length > 0){
+    html.push(`<h4>Sostituzioni Effettuate</h4>`);
+    html.push(`<ul class="grid cols-2">`);
+    sost.forEach(s=>{
+      const plEntra = Object.values(rosa).find(r=>r.uid === s.entra);
+      const plEsce = Object.values(rosa).find(r=>r.uid === s.esce);
+      html.push(`
+        <li class="card">
+          <div style="font-weight:700">Minuto ${s.minuto}</div>
+          Entra: <b>${plEntra?plEntra.cognome:'?'}</b> • Esce: <b>${plEsce?plEsce.cognome:'?'}</b>
+        </li>
+      `);
+    });
+    html.push(`</ul>`);
+  }
+
+  box.innerHTML = html.join('');
+}
+
 
     /**
      * FIX: Esposto a window per essere accessibile dall'onclick HTML
