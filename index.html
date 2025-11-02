@@ -1857,7 +1857,31 @@ window.showFormazionePubblica = async function(matchId, avv){
     return;
   }
 
-  const tit = match.formazioni['0'].formazione || {};
+ let tit = match.formazioni['0'].formazione || {};
+
+// retrocompatibilità vecchio formato ruoli testuali
+const MAP_OLD2NEW = {
+  'Portiere':'portiere',
+  'Terzino sinistro':'d1',
+  'Difensore centrale':'d2',
+  'Terzino destro':'d3',
+  'Centrocampista sinistro':'c1',
+  'Centrocampista centrale':'c2',
+  'Centrocampista destro':'c3',
+  'Attaccante centrale':'attaccante'
+};
+
+// converti se necessario
+const newFormat = {};
+Object.entries(tit).forEach(([ruolo, pid])=>{
+  if (MAP_OLD2NEW[ruolo]) {
+    newFormat[MAP_OLD2NEW[ruolo]] = pid;
+  } else {
+    newFormat[ruolo] = pid; // già nuovo formato
+  }
+});
+tit = newFormat;
+
   const pan = match.formazioni['0'].panchina || [];
   const sost = match.sostituzioni || [];
 
