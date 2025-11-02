@@ -2084,5 +2084,58 @@
 </div>
 </div>
 <footer>© 2024 AC Tuscolano | Gestione Squadra</footer>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+  var firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "actuscolano-default-rtdb.firebaseapp.com",
+    databaseURL: "https://actuscolano-default-rtdb.firebaseio.com",
+    projectId: "actuscolano-default-rtdb",
+    storageBucket: "actuscolano-default-rtdb.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+
+  function populatePlayerTable(matchId, containerId) {
+    var db = firebase.database();
+    var candidaturaRef = db.ref('/calendario/' + matchId + '/candidature');
+    var utentiRef = db.ref('/utenti');
+
+    candidaturaRef.once('value').then(function(snapshot) {
+      var candidature = snapshot.val();
+      if (!candidature) return;
+
+      utentiRef.once('value').then(function(userSnap) {
+        var utenti = userSnap.val();
+        var container = document.getElementById(containerId);
+        if (!container) return;
+
+        var table = document.createElement('table');
+        table.style.margin = 'auto';
+        table.style.textAlign = 'center';
+        table.innerHTML = '<tr><th>Nome/Cognome</th><th>Ruolo</th><th>Stato</th></tr>';
+
+        Object.keys(candidature).forEach(function(playerId) {
+          var user = utenti[playerId];
+          var stato = candidature[playerId].stato || 'N/A';
+          if (user) {
+            var row = document.createElement('tr');
+            row.innerHTML = '<td>' + user.nome + ' ' + user.cognome + '</td><td>' + (user.ruolo || 'N/A') + '</td><td>' + stato + '</td>';
+            table.appendChild(row);
+          }
+        });
+
+        container.appendChild(table);
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    populatePlayerTable('OcHH1dWuePLDYRvo8Iy', 'match-OcHH1dWuePLDYRvo8Iy');
+  });
+</script>
 </body>
 </html>
