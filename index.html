@@ -1496,7 +1496,58 @@ window.showFormazioneForm = async function(matchId, avv, formazioneJsonString){
     container.innerHTML = `<div class="error">Errore nel caricamento dati formazione.</div>`;
   }
 };
+// ================== ADMIN: SAVE FORMATION ==================
+window.saveFormazione = async function(matchId){
+  try {
+    const getVal = id => (byId(`slot-${id}`)?.value || '');
+    const formazione = {
+      portiere:   getVal('portiere'),
+      d1:         getVal('d1'),
+      d2:         getVal('d2'),
+      d3:         getVal('d3'),
+      c1:         getVal('c1'),
+      c2:         getVal('c2'),
+      c3:         getVal('c3'),
+      attaccante: getVal('attaccante')
+    };
 
+    // Panchina (multi)
+    const panSel = byId('panchina-select');
+    const panchina = panSel ? [...panSel.selectedOptions].map(o => o.value) : [];
+
+    // Candidati TRUE della partita
+    const snapCand = await get(ref(db, `calendario/${matchId}/candidature`));
+    const candidature = snapCand.val() || {};
+    const candidatiUID = Object.entries(candidature).filter(([,v])=>v===true).map(([uid])=>uid);
+
+    // Esclusi = candidati - (titolari ∪ panchina)
+    const used = new Set(Object.values(formazione).filter(Boolean));
+    panchina.forEach(uid => used.add(uid));
+    const esclusi = candidatiUID.filter(uid => !used.has(uid));
+
+    const payload = { '0': { formazione, panchina, esclusi } };
+    await update(ref(db, `calendario/${matchId}/formazioni`), payload);
+
+    alert('Formazione salvata.');
+  } catch(e) {
+    console.error('Errore salvataggio formazione:', e);
+    alert('Errore durante il salvataggio della formazione.');
+  }
+};
+// ================== ADMIN: PUBLISH FORMATION ==================
+window.pubblicaFormazione = async function(matchId){
+  try {
+    await update(ref(db, `calendario/${matchId}`), { formazionePubblicata: true });
+    alert('Formazione pubblicata. Ora è visibile nel Calendario pubblico.');
+  } catch(e) {
+    console.error('Errore pubblicazione formazione:', e);
+    alert('Errore nella pubblicazione della formazione.');
+  }
+};
+
+
+
+    
     /**
      * FIX: Esposto a window per essere accessibile dall'onclick HTML
      */
