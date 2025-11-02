@@ -557,23 +557,113 @@
     
     /**
      * Funzione Classifica:
-     * Legge SOLO dalla cache di Firebase.
+     * Legge dalla cache di Firebase e riformatta la tabella senza loghi. (FIX RICHIESTO)
      */
     window.loadClassifica = async () => {
       const classificaContent = byId('classifica-content');
       if (!classificaContent) return;
       classificaContent.innerHTML = `<div class="help">Caricamento classifica...</div>`;
+      
       try {
-        const snap = await get(ref(db, 'classifica_cache'));
-        const cache = (snap.exists() && snap.val()) ? snap.val() : {};
-        if (cache.html) {
-          classificaContent.innerHTML = cache.html;
-        } else {
-          classificaContent.innerHTML = `<div class="help">Classifica non ancora disponibile. L'amministratore deve aggiornarla.</div>`;
-        }
+          const snap = await get(ref(db, 'classifica_cache'));
+          const cache = (snap.exists() && snap.val()) ? snap.val() : {};
+          
+          if (!cache.html) {
+              classificaContent.innerHTML = `<div class="help">Classifica non ancora disponibile o non aggiornata. L'amministratore deve aggiornarla.</div>`;
+              return;
+          }
+
+          const parser = new DOMParser();
+          // Parse the raw HTML saved in cache by the admin function
+          const doc = parser.parseFromString(cache.html, "text/html");
+          
+          // Find the table inside the parsed document
+          const remoteTable = doc.querySelector("table.table"); 
+          if (!remoteTable) {
+              classificaContent.innerHTML = `<div class="help">Errore nel formato dei dati salvati. Impossibile trovare la tabella.</div>`;
+              return;
+          }
+
+          const rows = remoteTable.querySelectorAll("tbody tr");
+          if (rows.length === 0) {
+              classificaContent.innerHTML = `<div class="help">Nessuna riga dati trovata nella classifica.</div>`;
+              return;
+          }
+
+          // Standard Romatornei Columns (approx): 0:Pos, 1:Squadra, 2:Punti, 3:Giocate, 4:V, 5:N, 6:P, 7:F, 8:S, 9:DR
+          
+          let tableBodyHtml = '';
+          rows.forEach((tr, index) => {
+              const cells = Array.from(tr.children);
+              
+              // Skip rows that don't look like data rows (e.g., headers repeated in tbody)
+              if (cells.length < 8) return; 
+
+              // 1. Estrazione dati
+              const pos = cells[0]?.textContent.trim() || '—';
+              
+              // Rimuovi eventuali immagini/loghi dal nome della squadra prima di estrarre il testo
+              const squadraCell = cells[1].cloneNode(true);
+              squadraCell.querySelectorAll('img, .logo').forEach(el => el.remove());
+              const squadra = squadraCell.textContent.trim();
+              
+              const punti = cells[2]?.textContent.trim() || '0';
+              const giocate = cells[3]?.textContent.trim() || '0';
+              const vinte = cells[4]?.textContent.trim() || '0';
+              const pareggiate = cells[5]?.textContent.trim() || '0';
+              const perse = cells[6]?.textContent.trim() || '0';
+              // DR (Differenza Reti) è l'ultima cella in genere (indice 9)
+              const dr = cells[cells.length - 1]?.textContent.trim() || '0'; 
+              
+              // 2. Stile per evidenziare AC Tuscolano
+              const isTuscolano = squadra.toUpperCase().includes('AC TUSCOLANO');
+              const rowClass = isTuscolano 
+                  ? ' style="background:var(--yellow); color:var(--ink); font-weight:700;"' // Giallo brand
+                  : (index % 2 === 1 ? ' style="background:#f8f8f8;"' : '');
+
+              tableBodyHtml += `
+                  <tr${rowClass}>
+                      <td style="text-align:center;">${pos}</td>
+                      <td style="font-weight:700;">${escapeHtml(squadra)}</td>
+                      <td style="text-align:center;"><b>${punti}</b></td>
+                      <td style="text-align:center; color:var(--ink-sub);">${giocate}</td>
+                      <td style="text-align:center; color:#0e7a0d;">${vinte}</td>
+                      <td style="text-align:center;">${pareggiate}</td>
+                      <td style="text-align:center; color:var(--red);">${perse}</td>
+                      <td style="text-align:center;">${dr}</td>
+                  </tr>
+              `;
+          });
+          
+          const tableHtml = `
+              <div class="help">Classifica aggiornata da dati esterni. L'AC Tuscolano è evidenziata.</div>
+              <div style="overflow-x:auto">
+                  <table class="table" style="width:100%; border-collapse:collapse; margin-top:8px; font-size:14px; table-layout:auto;">
+                      <thead>
+                          <tr style="background:var(--ink); color:var(--white);">
+                              <th style="width:5%; text-align:center; padding:8px 4px;">Pos</th>
+                              <th style="width:35%; padding:8px 4px; text-align:left;">Squadra</th>
+                              <th style="width:10%; text-align:center; padding:8px 4px;">Pti</th>
+                              <th style="width:10%; text-align:center; color:#ddd;">G</th>
+                              <th style="width:10%; text-align:center; color:#90ee90;">V</th>
+                              <th style="width:10%; text-align:center; color:#ddd;">N</th>
+                              <th style="width:10%; text-align:center; color:#ff7f7f;">P</th>
+                              <th style="width:10%; text-align:center;">DR</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          ${tableBodyHtml}
+                      </tbody>
+                  </table>
+              </div>
+              <div class="help" style="margin-top:8px;">Ultimo aggiornamento: ${new Date(cache.timestamp || Date.now()).toLocaleString("it-IT")}</div>
+          `;
+
+          classificaContent.innerHTML = tableHtml;
+
       } catch (e) {
-        console.error("Errore caricamento classifica:", e);
-        classificaContent.innerHTML = `<div class="help" style="color:red">Errore caricamento classifica.</div>`;
+          console.error("Errore caricamento classifica:", e);
+          classificaContent.innerHTML = `<div class="help" style="color:red">Errore caricamento classifica.</div>`;
       }
     };
 
@@ -601,50 +691,20 @@
           return;
         }
 
-        // Riduci loghi
+        // Rimuovi loghi dalla copia locale per la cache
         remoteTable.querySelectorAll("img").forEach(img => {
-          img.style.maxWidth = "25px";
-          img.style.height = "auto";
-          img.style.verticalAlign = "middle";
+          img.remove();
         });
-
-        // Estrai intestazioni e righe
-        const headerNodes = remoteTable.querySelectorAll("thead th");
-        const headers = headerNodes.length ? Array.from(headerNodes).map(th => th.textContent.trim())
-          : Array.from(remoteTable.querySelectorAll("tr:first-child th, tr:first-child td")).map(el => el.textContent.trim());
-
-        const rows = remoteTable.querySelectorAll("tbody tr");
-        const bodyRows = rows.length ? Array.from(rows) : Array.from(remoteTable.querySelectorAll("tr")).slice(1);
-
-        // Calcola numero colonne e larghezze uniformi
-        const colCount = headers.length || (bodyRows[0]?.children.length || 8);
-        const widthPercent = (100 / colCount).toFixed(4) + '%';
-
-        // Costruisci thead
-        let theadHTML = '';
-        if (headers.length) {
-          theadHTML = '<thead><tr>' + headers.map(h => 
-            `<th style="width:${widthPercent};padding:8px;text-align:center;border-bottom:2px solid #ccc;background:#8B0000;color:#fff;font-weight:600;font-size:14px;word-wrap:break-word">${h}</th>`
-          ).join('') + '</tr></thead>';
-        }
-
-        // Costruisci tbody con celle uniformi
-        const tbodyHTML = bodyRows.map((tr, idx) => {
-          const cells = Array.from(tr.children);
-          const rowHTML = cells.map(td => 
-            `<td style="width:${widthPercent};padding:8px;text-align:center;border-bottom:1px solid #ddd;font-size:13px;word-wrap:break-word">${td.innerHTML}</td>`
-          ).join('');
-          const bg = idx % 2 === 1 ? ' style="background:#f8f8f8"' : '';
-          return `<tr${bg}>${rowHTML}</tr>`;
-        }).join('');
-
+        
+        // Pulizia: Rimuovi larghezze fisse e aggiungi la classe 'table'
+        remoteTable.removeAttribute('style');
+        remoteTable.classList.add('table');
+        
+        // Estrai l'HTML del TABLE (Thead e Tbody)
         const normalizedHTML = `
-          <div class="help">Classifica aggiornata manualmente da <a href="${url}" target="_blank" rel="noopener">romatornei.it</a></div>
+          <div class="help">Classifica aggiornata da <a href="${url}" target="_blank" rel="noopener">romatornei.it</a></div>
           <div style="overflow-x:auto">
-            <table class="table" style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px">
-              ${theadHTML}
-              <tbody>${tbodyHTML}</tbody>
-            </table>
+            ${remoteTable.outerHTML}
           </div>
           <div class="help" style="margin-top:8px;">Ultimo aggiornamento: ${new Date().toLocaleString("it-IT")}</div>
         `;
@@ -853,7 +913,7 @@
 
     /**
      * FUNZIONE loadProssimeGiornate (AGGIORNATA PER LISTA CANDIDATI)
-     * IMPLEMENTAZIONE FIX: Struttura più chiara per l'elenco dei candidati.
+     * IMPLEMENTAZIONE FIX: Struttura più chiara per l'elenco dei candidati. (FIX RICHIESTO)
      */
     window.loadProssimeGiornate = async function(asAdmin){
       const listId = asAdmin ? 'admin-calendario-list' : 'calendario-list';
@@ -904,7 +964,7 @@
         let candidatiListHtml = '';
         if (!asAdmin && !risultatoValido) { // Se è sezione pubblica e NON c'è risultato
             if (candCount > 0) {
-                let playersHtml = '<ul style="list-style:none; padding:0; margin:0; display:grid; gap:4px;">';
+                let playersHtml = '<ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:4px;">';
                 
                 const candidatiIds = Object.keys(cand).filter(pid => cand[pid] === true);
                 
@@ -917,18 +977,15 @@
                     const nome = escapeHtml(p.nome || '?');
                     const cognome = escapeHtml(p.cognome || '?');
                     const ruolo = escapeHtml(p.ruolo || 'Ruolo N/D');
-                    const stato = escapeHtml(p.stato || 'Stato N/D');
-
-                    // Stile pillola per lo stato (Titolare/Riserva)
-                    const statusPill = `<span class="pill" style="margin-left:5px; font-size:.7rem; background:#ccc; color:#333; padding:2px 6px;">${stato}</span>`;
+                    const stato = escapeHtml(p.stato || 'Stato N/D'); // Stato da Rosa
                     
+                    // Struttura a riga flessibile per chiarezza
                     return `
-                        <li style="border-bottom:1px dotted #eee; padding-bottom:4px; line-height:1.2;">
-                            <div style="font-size:0.95rem; font-weight:700;">
-                                ${nome} <b>${cognome}</b>
-                            </div>
-                            <div style="font-size:0.85rem; color:var(--ink-sub);">
-                                Ruolo: ${ruolo} ${statusPill}
+                        <li style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dotted #eee; padding:4px 0;">
+                            <div style="font-weight:700; flex-basis: 35%; line-height:1.2;">${nome} <b>${cognome}</b></div>
+                            <div style="font-size:0.9rem; flex-basis: 35%; color:var(--ink-sub); line-height:1.2;">${ruolo}</div>
+                            <div style="font-size:0.9rem; flex-basis: 30%; text-align:right;">
+                                <span class="pill" style="background:#0e7a0d; color:#fff; padding:2px 6px; font-size:.75rem;">${stato}</span>
                             </div>
                         </li>
                     `;
