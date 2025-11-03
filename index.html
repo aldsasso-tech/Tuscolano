@@ -1363,7 +1363,7 @@ if(user){
             // 2. Calcola media e prepara righe
             const rows = Object.values(aggregato).map(a => {
               const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
-              return { pid: a.pid, nome: a.nome, cognome: a.cognome, numero: a.numero, 
+              return { pid: a.uid, nome: a.nome, cognome: a.cognome, numero: a.numero, 
                        partite: a.countVoto, 
                        mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
                        goal: a.goal };
@@ -1392,7 +1392,7 @@ if(user){
                   </div>`;
               }
               
-             const clickAttr = r.partite > 0 ? `onclick="showDettaglioPrestazioniGiocatore('${r.pid}','${escapeHtml(r.nome)}','${escapeHtml(r.cognome)}')"` : '';
+         const clickAttr = r.partite > 0 ? `onclick="showDettaglioPrestazioniGiocatore('${r.uid}','${escapeHtml(r.nome)}','${escapeHtml(r.cognome)}')"` : '';
 
 return `
   <li class="card" ${clickAttr} style="cursor:${r.partite > 0 ? 'pointer' : 'default'}">
