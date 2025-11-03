@@ -1344,16 +1344,18 @@ if(user){
             // 1. Aggrega dati
             const aggregato = {};
             Object.keys(rosa).forEach(pid => {
-            aggregato[pid] = { 
-   pid, // la chiave rosa
-   uid: rosa[pid].uid || pid,  // <--- questa è la chiave corretta da usare poi nelle prestazioni
-   totalVoto: 0, 
-   countVoto: 0, 
-   goal: 0, 
-   nome: `${rosa[pid].nome} ${rosa[pid].cognome}`, 
-   numero: rosa[pid].numero, 
-   cognome: rosa[pid].cognome 
+  aggregato[pid] = { 
+     pid, // la chiave rosa
+     uid: rosa[pid].uid || pid,
+     totalVoto: 0, 
+     countVoto: 0, 
+     goal: 0, 
+     nome: `${rosa[pid].nome} ${rosa[pid].cognome}`, 
+     numero: rosa[pid].numero, 
+     cognome: rosa[pid].cognome 
+  };
 });
+
 
             Object.values(prestazioniByMatch).forEach(matchPrests => {
               Object.entries(matchPrests).forEach(([pid, data]) => {
