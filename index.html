@@ -376,7 +376,7 @@ window.showAdminSection = (id) => {
     }
     window.switchSection(id, true);
 };
-window.showDettaglioPrestazioniGiocatore = async function(pid, nome, cognome){
+window.showDettaglioPrestazioniGiocatore = async function(pidRosa, nome, cognome){
     window.showPublicSection('prestazioni-partita-section');
     const box = byId('prestazioni-partita-content');
     box.innerHTML = 'Caricamento dati...';
@@ -388,32 +388,32 @@ window.showDettaglioPrestazioniGiocatore = async function(pid, nome, cognome){
 
     let rows = [];
     Object.entries(prestazioni).forEach(([matchId, players])=>{
-        if(players[pid] && players[pid].voto != null){
+        if(players[pidRosa] && players[pidRosa].voto != null){
             const m = calendario[matchId] || {};
             rows.push({
-              voto: players[pid].voto,
+              voto: players[pidRosa].voto,
               avversaria: m.avversaria || '',
               data: m.data || '',
               matchId
             });
         }
     });
-console.log("PREST DEBUG → PID", pid, rows);
+
+    console.log("PREST DEBUG → PID", pidRosa, rows);
   
     if(rows.length === 0){
         box.innerHTML = `<h2>${nome} ${cognome}</h2><p>Nessuna prestazione registrata.</p>`;
         return;
     }
 
-   // ordina correttamente date in formato dd/mm/yyyy
-rows.sort((a,b)=>{
-   const pa = a.data.split('/');
-   const pb = b.data.split('/');
-   const da = new Date(`${pa[2]}-${pa[1]}-${pa[0]}`);
-   const db = new Date(`${pb[2]}-${pb[1]}-${pb[0]}`);
-   return da - db;
-});
-
+    // ordina correttamente date in formato dd/mm/yyyy
+    rows.sort((a,b)=>{
+       const pa = a.data.split('/');
+       const pb = b.data.split('/');
+       const da = new Date(`${pa[2]}-${pa[1]}-${pa[0]}`);
+       const db = new Date(`${pb[2]}-${pb[1]}-${pb[0]}`);
+       return da - db;
+    });
 
     let html = `<h2>${nome} ${cognome}</h2>
     <table class="table"><thead><tr><th>Data</th><th>Avversaria</th><th>Voto</th></tr></thead><tbody>`;
@@ -425,6 +425,7 @@ rows.sort((a,b)=>{
     html += `</tbody></table>`;
     box.innerHTML = html;
 };
+
 
 
     /* ========================================================================= */
@@ -1374,7 +1375,7 @@ if(user){
             const rows = Object.values(aggregato).map(a => {
               const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
               
- return { uid: a.uid, nome: a.nome, cognome: a.cognome, numero: a.numero, 
+ return { pid: a.pid, uid: a.uid, nome: a.nome, cognome: a.cognome, numero: a.numero, 
          partite: a.countVoto, 
          mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
          goal: a.goal };
@@ -1405,7 +1406,8 @@ if(user){
               }
               
          
-              const clickAttr = r.partite > 0 ? `onclick="showDettaglioPrestazioniGiocatore('${r.uid}','${escapeHtml(r.nome)}','${escapeHtml(r.cognome)}')"` : '';
+              const clickAttr = r.partite > 0 ? `onclick="showDettaglioPrestazioniGiocatore('${r.pid}','${escapeHtml(r.nome)}','${escapeHtml(r.cognome)}')"` : '';
+
 
 return `
   <li class="card" ${clickAttr} style="cursor:${r.partite > 0 ? 'pointer' : 'default'}">
