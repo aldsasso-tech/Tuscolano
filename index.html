@@ -398,7 +398,7 @@ window.showDettaglioPrestazioniGiocatore = async function(pid, nome, cognome){
             });
         }
     });
-console.log("PREST DEBUG → ", pid, rows);
+console.log("PREST DEBUG → PID", pid, rows);
   
     if(rows.length === 0){
         box.innerHTML = `<h2>${nome} ${cognome}</h2><p>Nessuna prestazione registrata.</p>`;
@@ -1363,10 +1363,15 @@ if(user){
             // 2. Calcola media e prepara righe
             const rows = Object.values(aggregato).map(a => {
               const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
-              return { pid: a.uid, nome: a.nome, cognome: a.cognome, numero: a.numero, 
-                       partite: a.countVoto, 
-                       mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
-                       goal: a.goal };
+             return { 
+    uid: a.uid || a.pid,  // fallback sicurezza
+    nome: a.nome, 
+    cognome: a.cognome, 
+    numero: a.numero, 
+    partite: a.countVoto, 
+    mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
+    goal: a.goal 
+};
             }).sort((a,b)=> {
               // Ordina per media voto (decrescente), poi goal (decrescente)
               const am = a.mediaVoto===null ? -1 : a.mediaVoto;
