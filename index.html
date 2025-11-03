@@ -1344,8 +1344,16 @@ if(user){
             // 1. Aggrega dati
             const aggregato = {};
             Object.keys(rosa).forEach(pid => {
-              aggregato[pid] = { totalVoto: 0, countVoto: 0, goal: 0, nome: `${rosa[pid].nome} ${rosa[pid].cognome}`, numero: rosa[pid].numero, cognome: rosa[pid].cognome };
-            });
+            aggregato[pid] = { 
+   pid, // la chiave rosa
+   uid: rosa[pid].uid || pid,  // <--- questa è la chiave corretta da usare poi nelle prestazioni
+   totalVoto: 0, 
+   countVoto: 0, 
+   goal: 0, 
+   nome: `${rosa[pid].nome} ${rosa[pid].cognome}`, 
+   numero: rosa[pid].numero, 
+   cognome: rosa[pid].cognome 
+});
 
             Object.values(prestazioniByMatch).forEach(matchPrests => {
               Object.entries(matchPrests).forEach(([pid, data]) => {
@@ -1363,15 +1371,12 @@ if(user){
             // 2. Calcola media e prepara righe
             const rows = Object.values(aggregato).map(a => {
               const media = a.countVoto > 0 ? a.totalVoto / a.countVoto : null;
-             return { 
-    uid: a.uid || a.pid,  // fallback sicurezza
-    nome: a.nome, 
-    cognome: a.cognome, 
-    numero: a.numero, 
-    partite: a.countVoto, 
-    mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
-    goal: a.goal 
-};
+              
+ return { uid: a.uid, nome: a.nome, cognome: a.cognome, numero: a.numero, 
+         partite: a.countVoto, 
+         mediaVoto: media !== null ? Number(media.toFixed(2)) : null, 
+         goal: a.goal };
+              
             }).sort((a,b)=> {
               // Ordina per media voto (decrescente), poi goal (decrescente)
               const am = a.mediaVoto===null ? -1 : a.mediaVoto;
@@ -1397,7 +1402,8 @@ if(user){
                   </div>`;
               }
               
-         const clickAttr = r.partite > 0 ? `onclick="showDettaglioPrestazioniGiocatore('${r.uid}','${escapeHtml(r.nome)}','${escapeHtml(r.cognome)}')"` : '';
+         
+              const clickAttr = r.partite > 0 ? `onclick="showDettaglioPrestazioniGiocatore('${r.uid}','${escapeHtml(r.nome)}','${escapeHtml(r.cognome)}')"` : '';
 
 return `
   <li class="card" ${clickAttr} style="cursor:${r.partite > 0 ? 'pointer' : 'default'}">
