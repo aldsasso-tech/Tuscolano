@@ -376,6 +376,46 @@ window.showAdminSection = (id) => {
     }
     window.switchSection(id, true);
 };
+window.showDettaglioPrestazioniGiocatore = async function(pid, nome, cognome){
+    window.showPublicSection('prestazioni-partita-section');
+    const box = byId('prestazioni-partita-content');
+    box.innerHTML = 'Caricamento dati...';
+
+    const snapPrest = await get(ref(db, 'prestazioni'));
+    const snapCal = await get(ref(db, 'calendario'));
+    const prestazioni = snapPrest.val() || {};
+    const calendario = snapCal.val() || {};
+
+    let rows = [];
+    Object.entries(prestazioni).forEach(([matchId, players])=>{
+        if(players[pid] && players[pid].voto != null){
+            const m = calendario[matchId] || {};
+            rows.push({
+              voto: players[pid].voto,
+              avversaria: m.avversaria || '',
+              data: m.data || '',
+              matchId
+            });
+        }
+    });
+
+    if(rows.length === 0){
+        box.innerHTML = `<h2>${nome} ${cognome}</h2><p>Nessuna prestazione registrata.</p>`;
+        return;
+    }
+
+    rows.sort((a,b)=> new Date(a.data) - new Date(b.data));
+
+    let html = `<h2>${nome} ${cognome}</h2>
+    <table class="table"><thead><tr><th>Data</th><th>Avversaria</th><th>Voto</th></tr></thead><tbody>`;
+
+    rows.forEach(r=>{
+        html += `<tr><td>${r.data}</td><td>${r.avversaria}</td><td><b>${r.voto}</b></td></tr>`;
+    });
+
+    html += `</tbody></table>`;
+    box.innerHTML = html;
+};
 
 
     /* ========================================================================= */
@@ -1343,20 +1383,22 @@ if(user){
                   </div>`;
               }
               
-              return `
-                <li class="card">
-                  <div class="row" style="justify-content:space-between; align-items:flex-start;">
-                    <div>
-                      <div class="player-title">${r.nome} ${r.numero ? `<span class="pill">#${r.numero}</span>` : ''}</div>
-                      <div class="player-sub">Partite con voto: <b>${r.partite}</b></div>
-                    </div>
-                    <div style="text-align:right;">
-                      <div class="player-title">Voto Medio: ${mediaVotoDisplay}</div>
-                      <div class="player-sub" style="margin-top:6px;">Goal: <b>${r.goal}</b></div>
-                    </div>
-                  </div>
-                  ${bar}
-                </li>
+             const clickAttr = r.partite > 0 ? `onclick="showDettaglioPrestazioniGiocatore('${r.pid}','${escapeHtml(r.nome)}','${escapeHtml(r.cognome)}')"` : '';
+
+return `
+  <li class="card" ${clickAttr} style="cursor:${r.partite > 0 ? 'pointer' : 'default'}">
+    <div class="row" style="justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div class="player-title">${r.nome} ${r.numero ? `<span class="pill">#${r.numero}</span>` : ''}</div>
+        <div class="player-sub">Partite con voto: <b>${r.partite}</b></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="player-title">Voto Medio: ${mediaVotoDisplay}</div>
+        <div class="player-sub" style="margin-top:6px;">Goal: <b>${r.goal}</b></div>
+      </div>
+    </div>
+    ${bar}
+  </li>
               `;
             }).join('');
             
