@@ -365,6 +365,18 @@
     ];
     const ALL_SECTIONS = [...PUBLIC_SECTIONS, ...ADMIN_SECTIONS, 'login-section']; 
 
+    // SWITCHER PUBBLICO
+window.showPublicSection = (id) => window.switchSection(id, false);
+
+// SWITCHER ADMIN
+window.showAdminSection = (id) => {
+    if(!isAdmin) return showLogin();
+    if(id === 'admin-utenti-section'){
+        loadGestionePermessi();
+    }
+    window.switchSection(id, true);
+};
+
 
     /* ========================================================================= */
     /* === FIX: LOGICA UNIFICATA PER IL CAMBIO SEZIONE (GESTIONE FADE PIÙ ROBUSTA) === */
