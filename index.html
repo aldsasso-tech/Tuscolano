@@ -398,13 +398,22 @@ window.showDettaglioPrestazioniGiocatore = async function(pid, nome, cognome){
             });
         }
     });
-
+console.log("PREST DEBUG → ", pid, rows);
+  
     if(rows.length === 0){
         box.innerHTML = `<h2>${nome} ${cognome}</h2><p>Nessuna prestazione registrata.</p>`;
         return;
     }
 
-    rows.sort((a,b)=> new Date(a.data) - new Date(b.data));
+   // ordina correttamente date in formato dd/mm/yyyy
+rows.sort((a,b)=>{
+   const pa = a.data.split('/');
+   const pb = b.data.split('/');
+   const da = new Date(`${pa[2]}-${pa[1]}-${pa[0]}`);
+   const db = new Date(`${pb[2]}-${pb[1]}-${pb[0]}`);
+   return da - db;
+});
+
 
     let html = `<h2>${nome} ${cognome}</h2>
     <table class="table"><thead><tr><th>Data</th><th>Avversaria</th><th>Voto</th></tr></thead><tbody>`;
