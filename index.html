@@ -2106,24 +2106,18 @@ tit = newFormat;
     ...Array.from(panchina)
   ];
 
-  // prepara tabella
-  let rowsHtml = '';
+  // preparo tabella (ordino per numero maglia)
+  const listaGioc = Object.entries(rosa)
+    .filter(([pid,p]) => giocatoriPresenti.includes(p.uid)) // match con UID della formazione
+    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
 
-  // ordino per numero maglia come nel sito pubblico
-  const listaGioc = giocatoriPresenti
-    .map(uid => {
-      const pl = Object.values(rosa).find(pp => pp.uid === uid);
-      return pl ? pl : null;
-    })
-    .filter(Boolean)
-    .sort((a,b)=> (a.numero||0)-(b.numero||0));
+  let rowsHtml = listaGioc.map(([pid,p])=>{
+    const pData = prestazioni[pid] || {}; // <-- QUI ADESSO CERCHIAMO PID NON UID
 
-  listaGioc.forEach(p=>{
-    const pData = prestazioni[p.uid] || {};
-    const voto = pData.voto !== undefined ? pData.voto : "N/D";
-    const goal = pData.goal !== undefined ? pData.goal : "N/D";
+    const voto = (pData.voto !== undefined ? pData.voto : "N/D");
+    const goal = (pData.goal !== undefined ? pData.goal : "N/D");
 
-    rowsHtml += `
+    return `
       <tr>
         <td>#${p.numero}</td>
         <td>${escapeHtml(p.cognome)}</td>
@@ -2131,7 +2125,7 @@ tit = newFormat;
         <td>${goal}</td>
       </tr>
     `;
-  });
+  }).join('');
 
   container.innerHTML = `
     <h3>Prestazioni vs ${escapeHtml(avv)}</h3>
@@ -2145,9 +2139,11 @@ tit = newFormat;
         </tbody>
       </table>
     </div>
-    <button class="btn" onclick="showPublicSection('calendario-section')">Torna al Calendario &amp; Partite</button>
+
+    <button class="btn" onclick="window.loadProssimeGiornate(false)">Torna al Calendario &amp; Partite</button>
   `;
 };
+
 
 
 
