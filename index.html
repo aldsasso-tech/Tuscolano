@@ -2071,7 +2071,7 @@ tit = newFormat;
      */
 window.showPrestazioniPubbliche = async function(matchId, avv){
 
-  // apre la DRITTA sezione full-page dedicata
+  // Mostra pagina dedicata prestazioni pubbliche
   window.showPublicSection('prestazioni-pubbliche-section');
 
   const container = byId('prestazioni-public-container');
@@ -2082,6 +2082,7 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
 
   container.innerHTML = "Caricamento prestazioni...";
 
+  // carico rosa + prestazioni + partita
   const [snapRosa, snapPrests, snapMatch] = await Promise.all([
     get(ref(db, 'rosa')),
     get(ref(db, `prestazioni/${matchId}`)),
@@ -2100,13 +2101,13 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
   const form = partita.formazioni["0"].formazione || {};
   const panchina = partita.formazioni["0"].panchina || [];
 
-  // UID che hanno preso parte realmente alla gara
-  const giocatoriPresenti = [...Object.values(form), ...Array.from(panchina)];
+  // UID presenti realmente in partita
+  const giocatoriPresentiUID = [...Object.values(form), ...Array.from(panchina)];
 
-  // trovo i PID corrispondenti e ordino per numero maglia
+  // filtro PIDs rosa che matchano i presenti
   const listaGioc = Object.entries(rosa)
-   .filter(([pid,p]) => giocatoriPresenti.includes(p.uid))
-   .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+    .filter(([pid,p]) => giocatoriPresentiUID.includes(p.uid))
+    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
 
   let rowsHtml = listaGioc.map(([pid,p])=>{
     const dataPrest = prestazioni[pid] || {};
@@ -2123,18 +2124,18 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
   }).join('');
 
   container.innerHTML = `
-    <h3>Prestazioni vs ${escapeHtml(avv)}</h3>
-    <div style="overflow-x:auto;margin-bottom:12px;">
+    <h3>Prestazioni vs ${escapeHtml(avv)}</h3><br>
+    <div style="overflow-x:auto;margin-bottom:14px;">
       <table class="table">
         <thead><tr><th>#</th><th>Cognome</th><th>Voto</th><th>Goal</th></tr></thead>
-        <tbody>${rowsHtml || `<tr><td colspan="4">Nessun giocatore ha ricevuto prestazioni per questa partita.</td></tr>`}</tbody>
+        <tbody>
+          ${rowsHtml || `<tr><td colspan="4">Nessun giocatore ha ricevuto prestazioni per questa partita.</td></tr>`}
+        </tbody>
       </table>
     </div>
+
     <button class="btn" onclick="window.showPublicSection('calendario-section')">Torna al Calendario &amp; Partite</button>
   `;
-
-  // porta la view in alto
-  window.scrollTo(0,0);
 };
 
 
