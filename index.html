@@ -2093,23 +2093,20 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
   const prestazioni = snapPrests.val() || {};
   const partita = snapMatch.val() || {};
 
-  if(!partita.formazioni || !partita.formazioni["0"]){
-    container.innerHTML = `<div class="help">Nessuna formazione salvata.</div>`;
-    return;
-  }
+  const form = partita.formazioni?.["0"]?.formazione || {};
+  const panchina = partita.formazioni?.["0"]?.panchina || [];
 
-  const form = partita.formazioni["0"].formazione || {};
-  const panchina = partita.formazioni["0"].panchina || [];
-
-  // lista UID presenti realmente in partita
   const giocatoriPresentiUID = [...Object.values(form), ...Array.from(panchina)];
 
-  // ricavo tutti i PID rosa che hanno UID presente
-  const listaGioc = Object.entries(rosa)
-    .filter(([pid,p]) => giocatoriPresentiUID.includes(p.uid)) // match pid tramite UID
-    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+  // MERGE DEFINITIVO
+  const listaFinale = Object.entries(rosa)
+   .filter(([pid,p]) => 
+        giocatoriPresentiUID.includes(p.uid) ||
+        prestazioni[pid] !== undefined
+   )
+   .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
 
-  let rowsHtml = listaGioc.map(([pid,p])=>{
+  let rowsHtml = listaFinale.map(([pid,p])=>{
     const dataPrest = prestazioni[pid] || {};
     const voto = (dataPrest.voto !== undefined ? dataPrest.voto : "N/D");
     const goal = (dataPrest.goal !== undefined ? dataPrest.goal : 0);
