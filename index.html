@@ -2398,48 +2398,51 @@ window.crudDeletePartita = async function(matchId){
     /**
      * FIX: Carica la lista delle partite per il CRUD (Admin - Gestione Dati)
      */
-    window.loadCrudPartite = async function(){
-      const tbody = byId('crud-partite-body'); if(!tbody) return; 
-      tbody.innerHTML='<tr><td colspan="7">Caricamento partite...</td></tr>';
-      
-      try {
-        const snap = await get(ref(db,'calendario'));
-        const val = snap.val() || {};
-        const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
-        const rows = Object.entries(val).sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
-        
-        if(!rows.length){ tbody.innerHTML = '<tr><td colspan="7">Nessuna partita inserita.</td></tr>'; return; }
-        
-        let html = rows.map(([id, m]) => {
-          const isCasa = m.casa === true || m.casa === 'true';
-          return `
-            <tr>
-              <td><input type="text" value="${escapeHtml(m.data)}" data-field="data" data-id="${id}"/></td>
-              <td><input type="time" value="${escapeHtml(m.orario||'')}" data-field="orario" data-id="${id}"/></td>
-              <td><input type="text" value="${escapeHtml(m.avversaria)}" data-field="avversaria" data-id="${id}"/></td>
-              <td><input type="text" value="${escapeHtml(m.risultato||'N/D')}" data-field="risultato" data-id="${id}"/></td>
-              <td><input type="text" value="${escapeHtml(m.campo)}" data-field="campo" data-id="${id}"/></td>
-              <td>
-                <select data-field="casa" data-id="${id}">
-                  <option value="true" ${isCasa ? 'selected' : ''}>Casa</option>
-                  <option value="false" ${!isCasa ? 'selected' : ''}>Trasferta</option>
-                </select>
-              </td>
-              <td>
-                <button class="btn btn--accent" onclick="crudUpdatePartita('${id}')" style="padding:4px 8px; font-size:.8rem;">Salva</button>
-                <button class="btn" onclick="crudDeletePartita('${id}')" style="padding:4px 8px; font-size:.8rem; background:var(--ink-sub); color:#fff;">Elimina</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-        
-        tbody.innerHTML = html;
+  window.loadCrudPartite = async function(){
+  const tbody = byId('crud-partite-body'); if(!tbody) return; 
+  tbody.innerHTML='<tr><td colspan="7">Caricamento partite...</td></tr>';
+  
+  try {
+    const snap = await get(ref(db,'calendario'));
+    const val = snap.val() || {};
+    const toDate = (d)=>{ const [dd,mm,yyyy] = String(d||'').split('/'); return new Date(`${mm}/${dd}/${yyyy}`); };
+    const rows = Object.entries(val).sort((a,b)=> toDate(b[1].data)-toDate(a[1].data));
+    
+    if(!rows.length){ tbody.innerHTML = '<tr><td colspan="7">Nessuna partita inserita.</td></tr>'; return; }
+    
+    let html = rows.map(([id, m]) => {
+      const isCasa = m.casa === true || m.casa === 'true';
+      return `
+        <tr>
+          <td><input type="text" value="${escapeHtml(m.data)}" data-field="data" data-id="${id}"/></td>
+          <td><input type="time" value="${escapeHtml(m.orario||'')}" data-field="orario" data-id="${id}"/></td>
+          <td><input type="text" value="${escapeHtml(m.avversaria)}" data-field="avversaria" data-id="${id}"/></td>
+          <td><input type="text" value="${escapeHtml(m.risultato||'N/D')}" data-field="risultato" data-id="${id}"/></td>
+          <td><input type="text" value="${escapeHtml(m.campo)}" data-field="campo" data-id="${id}"/></td>
+          <td>
+            <select data-field="casa" data-id="${id}">
+              <option value="true" ${isCasa ? 'selected' : ''}>Casa</option>
+              <option value="false" ${!isCasa ? 'selected' : ''}>Trasferta</option>
+            </select>
+          </td>
+          <td style="display:flex;flex-direction:column;gap:4px;">
+            <button class="btn btn--accent" onclick="crudUpdatePartita('${id}')">Salva</button>
+            <button class="btn" onclick="showResultForm('${id}','${escapeHtml(m.avversaria)}')">Risultato/Video</button>
+            <button class="btn" onclick="showFormazioneForm('${id}','${escapeHtml(m.avversaria)}', '${escapeHtml(JSON.stringify(m.formazioni || null))}')">Formazione/Sost.</button>
+            <button class="btn" onclick="showCandidatureEditor('${id}','${escapeHtml(m.avversaria)}')">Candidature</button>
+            <button class="btn btn--danger" onclick="crudDeletePartita('${id}')">Elimina</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    tbody.innerHTML = html;
 
-      } catch(e) {
-        console.error("Errore caricamento CRUD Partite:", e);
-        tbody.innerHTML = '<tr><td colspan="7" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
-      }
-    }
+  } catch(e) {
+    console.error("Errore caricamento CRUD Partite:", e);
+    tbody.innerHTML = '<tr><td colspan="7" style="color:red">Errore durante il caricamento dei dati.</td></tr>';
+  }
+}
 
 
     // Helper per popolare il selettore delle candidature
@@ -2595,33 +2598,55 @@ byId('btn-salva-permessi').onclick = async function(){
     /**
      * FIX: Carica dati esistenti per il form Risultato/Video.
      */
-    window.showResultForm = async function(matchId, avv) {
-      window.showAdminSection('admin-statistiche-section');
-      const container = byId('risultato-form-container');
-      container.innerHTML = 'Caricamento dati partita...';
-      
-      const snap = await get(ref(db, `calendario/${matchId}`));
-      const m = snap.val() || {};
-      
-      const risultatoValue = escapeHtml(m.risultato || '');
-      const linkVideoValue = escapeHtml(m.linkVideo || '');
+   window.showResultForm = async function(matchId, avv) {
+  window.showAdminSection('admin-statistiche-section');
+  const container = byId('risultato-form-container');
+  container.innerHTML = 'Caricamento dati partita...';
 
-      container.innerHTML = `
-        <h3>Inserimento Risultato/Video vs ${escapeHtml(avv)}</h3>
-        <div class="help">**Attenzione:** La funzione di salvataggio del risultato e del video è da implementare.</div>
-        <form id="result-entry-form" data-match-id="${matchId}">
-            <label>Risultato (Esempio: 5-3)</label>
-            <input type="text" id="risultato" placeholder="X-Y" value="${risultatoValue}" required>
-            <label>Link YouTube (Facoltativo)</label>
-            <input type="url" id="linkVideo" placeholder="https://www.youtube.com/watch?v=..." value="${linkVideoValue}" />
-            <p class="help">ID Partita: <b>${matchId}</b></p>
-            <div class="actions">
-                <button type="submit" class="btn btn--accent" onclick="alert('Funzione di salvataggio da implementare!')">Salva Risultato e Video</button>
-            </div>
-        </form>
-      `;
-    };
-    
+  const snap = await get(ref(db, `calendario/${matchId}`));
+  const m = snap.val() || {};
+
+  const risultatoValue = escapeHtml(m.risultato || '');
+  const linkVideoValue = escapeHtml(m.linkVideo || '');
+
+  container.innerHTML = `
+    <h3>Risultato / Video vs ${escapeHtml(avv)}</h3>
+    <form id="result-entry-form" data-match-id="${matchId}">
+        <label>Risultato (es: 5-3)</label>
+        <input type="text" id="risultato" placeholder="X-Y" value="${risultatoValue}" required>
+
+        <label>Link YouTube (facoltativo)</label>
+        <input type="url" id="linkVideo" placeholder="https://www.youtube.com/watch?v=..." value="${linkVideoValue}" />
+
+        <div class="actions" style="margin-top:12px;">
+            <button type="submit" class="btn btn--accent">Salva</button>
+        </div>
+    </form>
+  `;
+
+  const form = byId("result-entry-form");
+  form.onsubmit = async (e)=>{
+     e.preventDefault();
+
+     const risultato = byId('risultato').value.trim();
+     const linkVideo = byId('linkVideo').value.trim();
+
+     await update(ref(db, `calendario/${matchId}`), {
+        risultato,
+        linkVideo
+     });
+
+     alert("Risultato aggiornato!");
+
+     // ricarico admin partite
+     if(window.loadCrudPartite) window.loadCrudPartite();
+
+     // aggiorno immediatamente calendario pubblico se era visibile
+     if(typeof window.lastCalendarioAdminView !== 'undefined'){
+        loadProssimeGiornate(window.lastCalendarioAdminView);
+     }
+  }
+};
 
     
     /**
