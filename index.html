@@ -2070,69 +2070,84 @@ tit = newFormat;
      * FIX: Esposto a window per essere accessibile dall'onclick HTML
      */
     window.showPrestazioniPubbliche = async function(matchId, avv){
-      window.showPublicSection('prestazioni-partita-section');
-      const content = byId('prestazioni-partita-content');
-      content.innerHTML = 'Caricamento prestazioni...';
 
-      try {
-        const [snapRosa, snapPrests, snapMatch] = await Promise.all([
-          get(ref(db, 'rosa')),
-          get(ref(db, `prestazioni/${matchId}`)),
-          get(ref(db, `calendario/${matchId}`))
-        ]);
-        
-        const rosa = snapRosa.val() || {};
-        const prestazioni = snapPrests.val() || {};
-        const match = snapMatch.val() || {};
-        
-        // Determina quali giocatori erano candidati (ou titolari/riserve) per la partita
-        const cand = match.candidature || {};
-        const titolariIds = Object.values(match.formazioni?.['0']?.formazione || {});
-        const panchinaIds = match.formazioni?.['0']?.panchina || [];
-        const availablePids = new Set([...titolariIds, ...panchinaIds, ...Object.keys(cand)]);
-        
-        const finalRows = Object.entries(prestazioni)
-          .filter(([pid, data]) => availablePids.has(pid)) // FILTRA PER CANDIDATURA/FORMAZIONE
-          .map(([pid, data]) => {
-            const player = rosa[pid] || { nome: 'Giocatore', cognome: 'Sconosciuto', numero: '?' };
-            let voto = data.voto;
-            // Formatta il voto
-            if (voto === null || Number.isNaN(voto)) {
-              voto = '—';
-            }
-            return { 
-              nome: `${player.nome} ${player.cognome}`, 
-              numero: player.numero, 
-              voto: voto, 
-              goal: data.goal || 0 // goal is always a number (or 0)
-            };
-          })
-          // Ordina per Voto (numeri prima, '—' dopo), poi Goal
-          .sort((a, b) => {
-            const votoA = a.voto === '—' ? -1 : a.voto;
-            const votoB = b.voto === '—' ? -1 : b.voto;
-            if (votoB !== votoA) return votoB - votoA;
-            return (b.goal || 0) - (a.goal || 0);
-          });
+  window.showPublicSection('calendario-section');
 
-        if (finalRows.length === 0) {
-          content.innerHTML = `<h3>vs ${escapeHtml(avv)}</h3><p>Nessun giocatore ha ricevuto prestazioni per questa partita.</p>`;
-          return;
-        }
+  const container = byId('public-prestazioni-container');
+  if(!container){
+    alert("Container prestazioni pubbliche non trovato in pagina");
+    return;
+  }
 
-        let tableHtml = `<table class="table"><thead><tr><th>#</th><th>Giocatore</th><th>Voto</th><th>Goal</th></tr></thead><tbody>`;
-        finalRows.forEach(r => {
-          tableHtml += `<tr><td>${r.numero}</td><td>${escapeHtml(r.nome)}</td><td><b>${r.voto}</b></td><td>${r.goal}</td></tr>`;
-        });
-        tableHtml += `</tbody></table>`;
+  container.innerHTML = "Caricamento prestazioni...";
 
-        content.innerHTML = `<h3>Prestazioni vs ${escapeHtml(avv)}</h3>` + tableHtml;
-      } catch (err) {
-        console.error('Errore caricamento prestazioni partita:', err);
-        content.innerHTML = `<h3>Prestazioni vs ${escapeHtml(avv)}</h3><p style="color:red">Impossibile caricare le prestazioni.</p>`;
-      }
-    }
-    
+  // carico rosa + prestazioni + partita
+  const [snapRosa, snapPrests, snapMatch] = await Promise.all([
+    get(ref(db, 'rosa')),
+    get(ref(db, `prestazioni/${matchId}`)),
+    get(ref(db, `calendario/${matchId}`))
+  ]);
+
+  const rosa = snapRosa.val() || {};
+  const prestazioni = snapPrests.val() || {};
+  const partita = snapMatch.val() || {};
+
+  if(!partita.formazioni || !partita.formazioni["0"]){
+    container.innerHTML = `<div class="help">Nessuna formazione salvata.</div>`;
+    return;
+  }
+
+  const form = partita.formazioni["0"].formazione || {};
+  const panchina = partita.formazioni["0"].panchina || [];
+
+  // lista uid giocatori che hanno giocato (titolari + panchina)
+  const giocatoriPresenti = [
+    ...Object.values(form),
+    ...Array.from(panchina)
+  ];
+
+  // prepara tabella
+  let rowsHtml = '';
+
+  // ordino per numero maglia come nel sito pubblico
+  const listaGioc = giocatoriPresenti
+    .map(uid => {
+      const pl = Object.values(rosa).find(pp => pp.uid === uid);
+      return pl ? pl : null;
+    })
+    .filter(Boolean)
+    .sort((a,b)=> (a.numero||0)-(b.numero||0));
+
+  listaGioc.forEach(p=>{
+    const pData = prestazioni[p.uid] || {};
+    const voto = pData.voto !== undefined ? pData.voto : "N/D";
+    const goal = pData.goal !== undefined ? pData.goal : "N/D";
+
+    rowsHtml += `
+      <tr>
+        <td>#${p.numero}</td>
+        <td>${escapeHtml(p.cognome)}</td>
+        <td>${voto}</td>
+        <td>${goal}</td>
+      </tr>
+    `;
+  });
+
+  container.innerHTML = `
+    <h3>Prestazioni vs ${escapeHtml(avv)}</h3>
+    <div style="overflow-x:auto;margin-bottom:12px;">
+      <table class="table">
+        <thead>
+          <tr><th>#</th><th>Cognome</th><th>Voto</th><th>Goal</th></tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || `<tr><td colspan="4">Nessun giocatore ha ricevuto prestazioni per questa partita.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn" onclick="showPublicSection('calendario-section')">Torna al Calendario &amp; Partite</button>
+  `;
+};
 
 
 
