@@ -2099,12 +2099,10 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
   const giocatoriPresentiUID = [...Object.values(form), ...Array.from(panchina)];
 
   // MERGE DEFINITIVO
-  const listaFinale = Object.entries(rosa)
-   .filter(([pid,p]) => 
-        giocatoriPresentiUID.includes(p.uid) ||
-        prestazioni[pid] !== undefined
-   )
+const listaFinale = Object.entries(rosa)
+   .filter(([pid,p]) => giocatoriPresentiUID.includes(p.uid))
    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+
 
   let rowsHtml = listaFinale.map(([pid,p])=>{
     const dataPrest = prestazioni[pid] || {};
