@@ -2069,19 +2069,18 @@ tit = newFormat;
     /**
      * FIX: Esposto a window per essere accessibile dall'onclick HTML
      */
-    window.showPrestazioniPubbliche = async function(matchId, avv){
+  window.showPrestazioniPubbliche = async function(matchId, avv){
 
-  window.showPublicSection('calendario-section');
+  window.showPublicSection('prestazioni-pubbliche-section');
 
-  const container = byId('public-prestazioni-container');
+  const container = byId('prestazioni-public-container');
   if(!container){
-    alert("Container prestazioni pubbliche non trovato in pagina");
+    alert("Container prestazioni pubbliche non trovato");
     return;
   }
 
   container.innerHTML = "Caricamento prestazioni...";
 
-  // carico rosa + prestazioni + partita
   const [snapRosa, snapPrests, snapMatch] = await Promise.all([
     get(ref(db, 'rosa')),
     get(ref(db, `prestazioni/${matchId}`)),
@@ -2099,50 +2098,41 @@ tit = newFormat;
 
   const form = partita.formazioni["0"].formazione || {};
   const panchina = partita.formazioni["0"].panchina || [];
+  
+  // lista UID presenti realmente in partita
+  const giocatoriPresenti = [...Object.values(form), ...Array.from(panchina)];
 
-  // lista uid giocatori che hanno giocato (titolari + panchina)
-  const giocatoriPresenti = [
-    ...Object.values(form),
-    ...Array.from(panchina)
-  ];
-
-  // preparo tabella (ordino per numero maglia)
+  // cerco PID usando UID match rosa
   const listaGioc = Object.entries(rosa)
-    .filter(([pid,p]) => giocatoriPresenti.includes(p.uid)) // match con UID della formazione
-    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+   .filter(([pid,p]) => giocatoriPresenti.includes(p.uid))
+   .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
 
   let rowsHtml = listaGioc.map(([pid,p])=>{
-    const pData = prestazioni[pid] || {}; // <-- QUI ADESSO CERCHIAMO PID NON UID
-
-    const voto = (pData.voto !== undefined ? pData.voto : "N/D");
-    const goal = (pData.goal !== undefined ? pData.goal : "N/D");
-
+    const dataPrest = prestazioni[pid] || {};
+    const voto = (dataPrest.voto !== undefined ? dataPrest.voto : "N/D");
+    const goal = (dataPrest.goal !== undefined ? dataPrest.goal : "N/D");
+    
     return `
       <tr>
         <td>#${p.numero}</td>
         <td>${escapeHtml(p.cognome)}</td>
         <td>${voto}</td>
         <td>${goal}</td>
-      </tr>
-    `;
+      </tr>`;
   }).join('');
 
   container.innerHTML = `
     <h3>Prestazioni vs ${escapeHtml(avv)}</h3>
     <div style="overflow-x:auto;margin-bottom:12px;">
       <table class="table">
-        <thead>
-          <tr><th>#</th><th>Cognome</th><th>Voto</th><th>Goal</th></tr>
-        </thead>
-        <tbody>
-          ${rowsHtml || `<tr><td colspan="4">Nessun giocatore ha ricevuto prestazioni per questa partita.</td></tr>`}
-        </tbody>
+        <thead><tr><th>#</th><th>Cognome</th><th>Voto</th><th>Goal</th></tr></thead>
+        <tbody>${rowsHtml || `<tr><td colspan="4">Nessun giocatore ha ricevuto prestazioni per questa partita.</td></tr>`}</tbody>
       </table>
     </div>
-
-    <button class="btn" onclick="window.loadProssimeGiornate(false)">Torna al Calendario &amp; Partite</button>
+    <button class="btn" onclick="window.showPublicSection('calendario-section')">Torna al Calendario &amp; Partite</button>
   `;
 };
+
 
 
 
@@ -3104,6 +3094,10 @@ window.loadCandidatureForMatch = async function(matchId){
     <div id="public-prestazioni-container" style="display:block; margin-top:18px;"></div>
   </section>
 
+<section id="prestazioni-pubbliche-section" class="content-section" style="display:none;">
+  <div id="prestazioni-public-container"></div>
+</section>
+  
   <section id="classifica-section" class="content-section">
     <h2>Classifica</h2>
     <div id="classifica-content" style="overflow-x:auto;"> 
