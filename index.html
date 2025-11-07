@@ -3129,11 +3129,6 @@ window.loadCandidatureForMatch = async function(matchId){
     <div class="actions" style="margin-top:10px"><button class="btn" onclick="showPublicSection('calendario-section')">Torna al calendario</button></div>
   </section>
 
-  <section id="prestazioni-partita-section" class="content-section">
-    <h2>Prestazioni Partita</h2>
-    <div id="prestazioni-partita-content"></div>
-    <div class="actions" style="margin-top:10px"><button onclick="showPublicSection('statistiche-section')" class="btn">Torna alle statistiche</button></div>
-  </section>
 
   <section id="admin-inserimento-giocatori-section" class="content-section">
     <h2>Admin · Inserimento giocatori</h2>
@@ -3323,6 +3318,9 @@ window.loadCandidatureForMatch = async function(matchId){
       <button id="save-video-btn" class="btn btn--accent" type="button" disabled>Salva Link Video</button>
     </div>
   </section>
+   <section id="prestazioni-partita-section" class="content-section" style="display:none">
+  <div id="prestazioni-partita-content"></div>
+</section>
 </main>
 
 <div id="bottom-nav" role="navigation" aria-label="Navigazione mobile principale">
