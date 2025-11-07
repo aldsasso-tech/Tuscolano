@@ -2093,31 +2093,39 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
   const prestazioni = snapPrests.val() || {};
   const partita = snapMatch.val() || {};
 
+  // se non c'è formazione → niente prestazioni
   if(!partita.formazioni || !partita.formazioni["0"]){
     container.innerHTML = `<div class="help">Nessuna formazione salvata.</div>`;
     return;
   }
 
   const form = partita.formazioni["0"].formazione || {};
-  const panchinaObj = partita.formazioni["0"].panchina || [];
-const panchinaArr = Array.isArray(panchinaObj) ? panchinaObj : Object.values(panchinaObj);
-const giocatoriPresentiUID = [...Object.values(form), ...panchinaArr];
+  const panchina = partita.formazioni["0"].panchina || [];
 
+  // 1) lista valori grezzi dalla formazione/panchina
+  const rawList = [...Object.values(form), ...Array.from(panchina)];
 
-  // converto UID -> PID rosa
-  const giocatoriPresentiPID = Object.entries(rosa)
-    .filter(([pid,p]) => giocatoriPresentiUID.includes(p.uid))
-    .map(([pid,p]) => pid);
+  // 2) normalizza → UID o PID → PID
+  const UIDsToPID = {}; 
+  Object.entries(rosa).forEach(([pid,p])=>{
+      if(p.uid) UIDsToPID[p.uid] = pid;
+  });
 
-  // filtriamo le prestazioni usando PID (corretto)
-  const listaGioc = Object.entries(rosa)
-    .filter(([pid,p]) => giocatoriPresentiPID.includes(pid))
-    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+  const giocatoriPIDPresenti = rawList
+    .map(val => rosa[val] ? val : UIDsToPID[val])  // se è pid ok, se è uid converti
+    .filter(Boolean);
 
-  let rowsHtml = listaGioc.map(([pid,p])=>{
-    const dataPrest = prestazioni[pid] || {};
-    const voto = (dataPrest.voto !== undefined ? dataPrest.voto : "N/D");
-    const goal = (dataPrest.goal !== undefined ? dataPrest.goal : "N/D");
+  // 3) estrai solo quelli presenti + con eventuali voti
+  const listaFinale = giocatoriPIDPresenti
+    .filter(pid => rosa[pid]) // esiste in rosa
+    .sort((a,b)=> (rosa[a].numero||0)-(rosa[b].numero||0));
+
+  // 4) genera rows
+  let rowsHtml = listaFinale.map(pid=>{
+    const p = rosa[pid];
+    const pData = prestazioni[pid] || {};
+    const voto = pData.voto !== undefined ? pData.voto : "N/D";
+    const goal = pData.goal !== undefined ? pData.goal : "N/D";
 
     return `
       <tr>
@@ -2125,7 +2133,8 @@ const giocatoriPresentiUID = [...Object.values(form), ...panchinaArr];
         <td>${escapeHtml(p.cognome)}</td>
         <td>${voto}</td>
         <td>${goal}</td>
-      </tr>`;
+      </tr>
+    `;
   }).join('');
 
   container.innerHTML = `
