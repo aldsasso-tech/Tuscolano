@@ -1086,10 +1086,12 @@ window.loadProssimeGiornate = async function(asAdmin){
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     const isCandidato = !!(uid && candidatiAuthUIDs.includes(uid));
 
-    // --- BTN Prestazioni ---
-    const prestazioniBtn = risultatoValido
-      ? `<button class="btn" onclick="showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`
-      : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
+  // --- BTN Prestazioni ---
+// cliccabile solo se partita passata E risultato valido
+const prestazioniBtn = (isPast && risultatoValido)
+  ? `<button class="btn" onclick="showPrestazioniPubbliche('${matchId}','${escapeHtml(m.avversaria||'')}')">Prestazioni</button>`
+  : `<button class="btn" disabled style="opacity:0.6;cursor:not-allowed">Prestazioni</button>`;
+
 
     // --- BTN Candidatura (usa toggleCandidatura) ---
     let candButton='';
