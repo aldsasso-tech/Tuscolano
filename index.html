@@ -2099,10 +2099,10 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
   }
 
   const form = partita.formazioni["0"].formazione || {};
-  const panchina = partita.formazioni["0"].panchina || [];
+  const panchinaObj = partita.formazioni["0"].panchina || [];
+const panchinaArr = Array.isArray(panchinaObj) ? panchinaObj : Object.values(panchinaObj);
+const giocatoriPresentiUID = [...Object.values(form), ...panchinaArr];
 
-  // UID dei giocatori presenti realmente in partita
-  const giocatoriPresentiUID = [...Object.values(form), ...Array.from(panchina)];
 
   // converto UID -> PID rosa
   const giocatoriPresentiPID = Object.entries(rosa)
