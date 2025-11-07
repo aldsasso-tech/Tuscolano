@@ -2107,9 +2107,22 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
   const giocatoriPresentiUID = [...Object.values(form), ...Array.from(panchina)];
 
   // filtro PIDs rosa che matchano i presenti
-  const listaGioc = Object.entries(rosa)
-    .filter(([pid,p]) => giocatoriPresentiUID.includes(p.uid))
-    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+ // mappa formazione UID → PID rosa
+const uidToPid = {};
+Object.entries(rosa).forEach(([pid,p])=>{
+  if(p.uid) uidToPid[p.uid] = pid;
+});
+
+// converto tutti gli UID presenti in partita -> PID reali da rosa
+const giocatoriPresentiPID = giocatoriPresenti
+  .map(uid => uidToPid[uid])
+  .filter(Boolean);
+
+// ora posso fare render su PID
+const listaGioc = giocatoriPresentiPID
+  .map(pid => [pid, rosa[pid]])
+  .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
+
 
   let rowsHtml = listaGioc.map(([pid,p])=>{
     const dataPrest = prestazioni[pid] || {};
