@@ -2073,7 +2073,6 @@ tit = newFormat;
      */
 window.showPrestazioniPubbliche = async function(matchId, avv){
 
-  // Mostra pagina dedicata prestazioni pubbliche
   window.showPublicSection('prestazioni-pubbliche-section');
 
   const container = byId('prestazioni-public-container');
@@ -2084,7 +2083,6 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
 
   container.innerHTML = "Caricamento prestazioni...";
 
-  // carico rosa + prestazioni + partita
   const [snapRosa, snapPrests, snapMatch] = await Promise.all([
     get(ref(db, 'rosa')),
     get(ref(db, `prestazioni/${matchId}`)),
@@ -2103,26 +2101,24 @@ window.showPrestazioniPubbliche = async function(matchId, avv){
   const form = partita.formazioni["0"].formazione || {};
   const panchina = partita.formazioni["0"].panchina || [];
 
-  // UID presenti realmente in partita
+  // UID partecipanti
   const giocatoriPresentiUID = [...Object.values(form), ...Array.from(panchina)];
 
-  // filtro PIDs rosa che matchano i presenti
- // mappa formazione UID → PID rosa
-const uidToPid = {};
-Object.entries(rosa).forEach(([pid,p])=>{
-  if(p.uid) uidToPid[p.uid] = pid;
-});
+  // MAP UID -> PID rosa
+  const uidToPid = {};
+  Object.entries(rosa).forEach(([pid,p])=>{
+    if(p.uid) uidToPid[p.uid] = pid;
+  });
 
-// converto tutti gli UID presenti in partita -> PID reali da rosa
-const giocatoriPresentiPID = giocatoriPresenti
-  .map(uid => uidToPid[uid])
-  .filter(Boolean);
+  // converto UIDs -> PIDs
+  const giocatoriPresentiPID = giocatoriPresentiUID
+    .map(uid => uidToPid[uid])
+    .filter(Boolean);
 
-// ora posso fare render su PID
-const listaGioc = giocatoriPresentiPID
-  .map(pid => [pid, rosa[pid]])
-  .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
-
+  // lista ordinata per numero maglia
+  const listaGioc = giocatoriPresentiPID
+    .map(pid => [pid, rosa[pid]])
+    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
 
   let rowsHtml = listaGioc.map(([pid,p])=>{
     const dataPrest = prestazioni[pid] || {};
@@ -2139,16 +2135,13 @@ const listaGioc = giocatoriPresentiPID
   }).join('');
 
   container.innerHTML = `
-    <h3>Prestazioni vs ${escapeHtml(avv)}</h3><br>
-    <div style="overflow-x:auto;margin-bottom:14px;">
+    <h3>Prestazioni vs ${escapeHtml(avv)}</h3>
+    <div style="overflow-x:auto;margin-bottom:12px;">
       <table class="table">
         <thead><tr><th>#</th><th>Cognome</th><th>Voto</th><th>Goal</th></tr></thead>
-        <tbody>
-          ${rowsHtml || `<tr><td colspan="4">Nessun giocatore ha ricevuto prestazioni per questa partita.</td></tr>`}
-        </tbody>
+        <tbody>${rowsHtml || `<tr><td colspan="4">Nessun giocatore ha ricevuto prestazioni per questa partita.</td></tr>`}</tbody>
       </table>
     </div>
-
     <button class="btn" onclick="window.showPublicSection('calendario-section')">Torna al Calendario &amp; Partite</button>
   `;
 };
