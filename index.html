@@ -2073,77 +2073,64 @@ tit = newFormat;
      */
 window.showPrestazioniPubbliche = async function(matchId, avv){
 
-  window.showPublicSection('prestazioni-pubbliche-section');
+  window.showPublicSection('prestazioni-partita-section');
 
-  const container = byId('prestazioni-public-container');
-  if(!container){
-    alert("Container prestazioni pubbliche non trovato");
-    return;
+  const content = byId('prestazioni-partita-content');
+  content.innerHTML = 'Caricamento prestazioni...';
+
+  try {
+    const [snapRosa, snapPrests, snapMatch] = await Promise.all([
+      get(ref(db, 'rosa')),
+      get(ref(db, `prestazioni/${matchId}`)),
+      get(ref(db, `calendario/${matchId}`))
+    ]);
+    
+    const rosa = snapRosa.val() || {};
+    const prestazioni = snapPrests.val() || {};
+    const partita = snapMatch.val() || {};
+    
+    const form = partita.formazioni?.['0']?.formazione || {};
+    const panchina = partita.formazioni?.['0']?.panchina || [];
+
+    // questi sono PID
+    const presentiPids = [...Object.values(form), ...panchina];
+
+    // ordina come nel sito → numero maglia
+    const finalRows = presentiPids
+      .map(pid => {
+        const player = rosa[pid];
+        if(!player) return null;
+
+        const dataPrest = prestazioni[pid] || {};
+        const voto = dataPrest.voto !== undefined ? dataPrest.voto : 'N/D';
+        const goal = dataPrest.goal !== undefined ? dataPrest.goal : 'N/D';
+
+        return {num: player.numero, cognome: player.cognome, voto, goal};
+      })
+      .filter(Boolean)
+      .sort((a,b)=> (a.num||0)-(b.num||0));
+
+    if(!finalRows.length){
+      content.innerHTML = `<h3>Prestazioni vs ${escapeHtml(avv)}</h3><p>Nessun giocatore ha ricevuto prestazioni per questa partita.</p>`;
+      return;
+    }
+
+    let tableHtml = `<table class="table"><thead><tr><th>#</th><th>Cognome</th><th>Voto</th><th>Goal</th></tr></thead><tbody>`;
+    finalRows.forEach(r=>{
+      tableHtml += `<tr><td>${r.num}</td><td>${escapeHtml(r.cognome)}</td><td><b>${r.voto}</b></td><td>${r.goal}</td></tr>`;
+    });
+    tableHtml += `</tbody></table>`;
+
+    content.innerHTML = `
+      <h3>Prestazioni vs ${escapeHtml(avv)}</h3>
+      ${tableHtml}
+      <button class="btn" onclick="showPublicSection('calendario-section')">Torna al Calendario &amp; Partite</button>
+    `;
+
+  } catch (err) {
+    console.error('Errore caricamento prestazioni partita:', err);
+    content.innerHTML = `<h3>Prestazioni vs ${escapeHtml(avv)}</h3><p style="color:red">Impossibile caricare le prestazioni.</p>`;
   }
-
-  container.innerHTML = "Caricamento prestazioni...";
-
-  const [snapRosa, snapPrests, snapMatch] = await Promise.all([
-    get(ref(db, 'rosa')),
-    get(ref(db, `prestazioni/${matchId}`)),
-    get(ref(db, `calendario/${matchId}`))
-  ]);
-
-  const rosa = snapRosa.val() || {};
-  const prestazioni = snapPrests.val() || {};
-  const partita = snapMatch.val() || {};
-
-  if(!partita.formazioni || !partita.formazioni["0"]){
-    container.innerHTML = `<div class="help">Nessuna formazione salvata.</div>`;
-    return;
-  }
-
-  const form = partita.formazioni["0"].formazione || {};
-  const panchina = partita.formazioni["0"].panchina || [];
-
-  // UID partecipanti
-  const giocatoriPresentiUID = [...Object.values(form), ...Array.from(panchina)];
-
-  // MAP UID -> PID rosa
-  const uidToPid = {};
-  Object.entries(rosa).forEach(([pid,p])=>{
-    if(p.uid) uidToPid[p.uid] = pid;
-  });
-
-  // converto UIDs -> PIDs
-  const giocatoriPresentiPID = giocatoriPresentiUID
-    .map(uid => uidToPid[uid])
-    .filter(Boolean);
-
-  // lista ordinata per numero maglia
-  const listaGioc = giocatoriPresentiPID
-    .map(pid => [pid, rosa[pid]])
-    .sort((a,b)=> (a[1].numero||0)-(b[1].numero||0));
-
-  let rowsHtml = listaGioc.map(([pid,p])=>{
-    const dataPrest = prestazioni[pid] || {};
-    const voto = (dataPrest.voto !== undefined ? dataPrest.voto : "N/D");
-    const goal = (dataPrest.goal !== undefined ? dataPrest.goal : "N/D");
-
-    return `
-      <tr>
-        <td>#${p.numero}</td>
-        <td>${escapeHtml(p.cognome)}</td>
-        <td>${voto}</td>
-        <td>${goal}</td>
-      </tr>`;
-  }).join('');
-
-  container.innerHTML = `
-    <h3>Prestazioni vs ${escapeHtml(avv)}</h3>
-    <div style="overflow-x:auto;margin-bottom:12px;">
-      <table class="table">
-        <thead><tr><th>#</th><th>Cognome</th><th>Voto</th><th>Goal</th></tr></thead>
-        <tbody>${rowsHtml || `<tr><td colspan="4">Nessun giocatore ha ricevuto prestazioni per questa partita.</td></tr>`}</tbody>
-      </table>
-    </div>
-    <button class="btn" onclick="window.showPublicSection('calendario-section')">Torna al Calendario &amp; Partite</button>
-  `;
 };
 
 
