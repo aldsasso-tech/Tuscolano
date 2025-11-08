@@ -2,12 +2,14 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js
 importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "LA TUA API KEY FIREBASE QUI",
-  authDomain: "LA TUA AUTH DOMAIN QUI",
-  projectId: "LA TUA PROJECT ID QUI",
-  storageBucket: "LA TUA STORAGE BUCKET QUI",
-  messagingSenderId: "LA TUA MESSAGING SENDER ID QUI",
-  appId: "LA TUA APP ID QUI"
+  apiKey: "AIzaSyAQLQYXcwyFt5luNw1iA5N2-EfnbF1Bc7U",
+  authDomain: "actuscolano.firebaseapp.com",
+  databaseURL: "https://actuscolano-default-rtdb.firebaseio.com",
+  projectId: "actuscolano",
+  storageBucket: "actuscolano.firebasestorage.app",
+  messagingSenderId: "62685359731",
+  appId: "1:62685359731:web:26819bedd94fcb1ce8c406",
+  measurementId: "G-TSVH8PH4RC"
 });
 
 const messaging = firebase.messaging();
@@ -24,3 +26,4 @@ messaging.onBackgroundMessage((payload) => {
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
+
