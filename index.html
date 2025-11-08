@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AC Tuscolano | Gestione Squadra</title>
-<button id="btn-attiva-notifiche" class="btn">Attiva Notifiche Push</button>
+<button id="btn-attiva-notifiche" onclick="initNotifications()">Attiva Notifiche</button>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   
   <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
@@ -338,7 +338,8 @@
 
     //Firebase messaging
     const messaging = getMessaging(app);
-    document.getElementById('btn-attiva-notifiche').addEventListener('click', async ()=>{
+
+async function initNotifications(){
 
   try{
     const perm = await Notification.requestPermission();
@@ -347,7 +348,10 @@
       return;
     }
 
-    const token = await getToken(messaging, { vapidKey: 'TUAVAPIDKEY' });
+    const token = await getToken(messaging, {
+      vapidKey: 'BLmO6PREEYvsC-b8qfMHLPc5EnMJwjJvrD0J2nTVNe09dhoxd5kz1uL3zpcaZGooDAdyf4sBmJKRBAN60xYm_Hm4'
+    });
+
     console.log("Token FCM:", token);
 
     if(auth.currentUser){
@@ -357,11 +361,14 @@
     alert("Notifiche PUSH attivate correttamente!");
   }
   catch(e){
-    console.error(e);
+    console.error("ERROR initNotifications:",e);
     alert("Errore attivazione notifiche");
   }
 
-});
+}
+
+// rende la funzione richiamabile dal pulsante HTML
+window.initNotifications = initNotifications;
 
 
 
